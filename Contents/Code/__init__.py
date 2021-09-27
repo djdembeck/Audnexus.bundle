@@ -603,20 +603,16 @@ class AudiobookAlbum(Agent.Album):
             helper.author = response['authors']
         if 'releaseDate' in response:
             helper.date = self.getDateFromString(response['releaseDate'])
-
         if 'genres' in response:
             for genre in response['genres']:
                 if genre['type'] == 'parent':
                     helper.genre_parent = genre['name']
                 else:
                     helper.genre_child = genre['name']
-
         if 'narrators' in response:
             helper.narrator = response['narrators']
-
         if 'rating' in response:
             helper.rating = response['rating']
-
         if 'seriesPrimary' in response:
             helper.series = response['seriesPrimary']['name']
             if 'position' in response['seriesPrimary']:
@@ -625,7 +621,6 @@ class AudiobookAlbum(Agent.Album):
             helper.series2 = response['seriesSecondary']['name']
             if 'position' in response['seriesSecondary']:
                 helper.volume2 = response['seriesSecondary']['position']
-
         if 'publisherName' in response:
             helper.studio = response['publisherName']
         if 'summary' in response:
