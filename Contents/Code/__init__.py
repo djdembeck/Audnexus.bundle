@@ -9,7 +9,7 @@ from search_tools import SearchTool
 from update_tools import UpdateTool
 from urls import SiteUrl
 
-VERSION_NO = '2021.09.26.1'
+VERSION_NO = '2021.09.27.1'
 
 # Starting value for score before deductions are taken.
 INITIAL_SCORE = 100
@@ -17,8 +17,6 @@ INITIAL_SCORE = 100
 GOOD_SCORE = 98
 # Any score lower than this will be ignored.
 IGNORE_SCORE = 45
-# Audnexus is an API that aggregates audiobook data
-audnexus_api_url = 'https://api.audnex.us/books/'
 
 # Setup logger
 log = Logging()
@@ -170,12 +168,11 @@ class AudiobookAlbum(Agent.Album):
         normalizedName = self.normalize_name(search_helper.media.album)
         # Strip title of things like unabridged and spaces
         search_helper.strip_title(normalizedName)
-        # Validate author name
+        # # Validate author name
         search_helper.validate_author_name()
-        # Generate search url
-        searchUrl = self.create_search_url(ctx, search_helper)
-        # Run actual search, and set the variable to it's return
-        result = self.doSearch(ctx, searchUrl)
+
+        # Call search API
+        result = self.call_search_api(search_helper)
 
         # Write search result status to log
         if not result:
@@ -190,7 +187,7 @@ class AudiobookAlbum(Agent.Album):
             normalizedName
         )
 
-        info = self.run_search(search_helper, result)
+        info = self.process_results(search_helper, result)
 
         # Nested dict for localized separators
         # 'T_A' is the separator between title and author
@@ -230,9 +227,9 @@ class AudiobookAlbum(Agent.Album):
                 narrator_initials
             )
             log.debug(
-                '  [%s]  %s. %s (%s) %s; %s {%s} [%s]',
+                '  [%s]  %s. %s (%s) %s; %s {%s}',
                 r['score'], (i + 1), r['title'], r['year'],
-                r['artist'], r['narrator'], r['id'], r['thumb']
+                r['artist'], r['narrator'], r['id']
             )
             results.Append(
                 MetadataSearchResult(
@@ -240,7 +237,6 @@ class AudiobookAlbum(Agent.Album):
                     lang=lang,
                     name=description,
                     score=r['score'],
-                    thumb=r['thumb'],
                     year=r['year']
                 )
             )
@@ -276,7 +272,7 @@ class AudiobookAlbum(Agent.Album):
         # Instantiate update helper
         update_helper = UpdateTool(force, lang, media, metadata, url)
 
-        self.call_api(update_helper)
+        self.call_item_api(update_helper)
 
         # cleanup synopsis
         update_helper.synopsis = (
@@ -363,106 +359,23 @@ class AudiobookAlbum(Agent.Album):
 
         return new_name
 
-    def create_search_url(self, ctx, helper):
-        # Make the URL
-        if helper.media.artist:
-            searchUrl = ctx['AUD_SEARCH_URL'].format(
-                (
-                    String.Quote((helper.normalizedName).encode('utf-8'), usePlus=True)
-                ),
-                (
-                    String.Quote((helper.media.artist).encode('utf-8'), usePlus=True)
-                )
-            )
-        else:
-            searchUrl = ctx['AUD_KEYWORD_SEARCH_URL'] % (
-                String.Quote((helper.normalizedName).encode('utf-8'), usePlus=True)
-            )
-        return  searchUrl
+    def call_search_api(self, helper):
+        """
+            Builds URL then calls API, returns the JSON to helper function.
+        """
+        search_url = helper.build_url()
+        request = str(HTTP.Request(search_url))
+        response = json.loads(request)
+        results_list = helper.parse_api_response(response)
+        return results_list
 
-    def doSearch(self, ctx, url):
-        html = HTML.ElementFromURL(url)
-        found = []
-
-        # Set append to the returned array from this function
-        found = self.before_xpath(ctx, found, html)
-
-        return found
-
-    def before_xpath(self, ctx, found, html):
-        for r in html.xpath(
-            '//ul//li[contains(@class,"productListItem")]'
-        ):
-            author = self.getStringContentFromXPath(
-                r, (
-                    'div/div/div/div/div/div/span/ul'
-                    '/li[contains (@class,"authorLabel")]/span/a[1]'
-                )
-            )
-            datetext = self.getStringContentFromXPath(
-                r, (
-                    u'div/div/div/div/div/div/span/ul/li'
-                    '[contains (@class,"releaseDateLabel")]/span'
-                    )
-            )
-
-            # Handle different date structures
-            cleaned_datetext = re.search(r'\d{2}[-]\d{2}[-]\d{2}', datetext)
-            if not cleaned_datetext:
-                cleaned_datetext = re.search(r'\d{2}[.]\d{2}[.]\d{4}', datetext)
-
-            date = self.getDateFromString(cleaned_datetext.group(0))
-            language = self.getStringContentFromXPath(
-                r, (
-                    u'div/div/div/div/div/div/span/ul/li'
-                    '[contains (@class,"languageLabel")]/span'
-                    )
-            ).split()[1]
-            narrator = self.getStringContentFromXPath(
-                r, (
-                    u'div/div/div/div/div/div/span/ul/li'
-                    '[contains (@class,"narratorLabel")]/span//a[1]'
-                ).format(ctx['NAR_BY'])
-            )
-            murl = self.getAnchorUrlFromXPath(
-                r, 'div/div/div/div/div/div/span/ul/li/h3//a[1]'
-            )
-            title = self.getStringContentFromXPath(
-                r, (
-                    'div/div/div/div/div/div/span/ul//a'
-                    '[contains (@class,"bc-link")][1]'
-                    )
-            )
-            thumb = self.getImageUrlFromXPath(
-                r, 'div/div/div/div/div/div/div'
-                '[contains(@class,"responsive-product-square")]/div/a/img'
-            )
-            log.separator(msg='XPATH SEARCH HIT', log_level="debug")
-
-            found.append(
-                {
-                    'author': author,
-                    'date': date,
-                    'language': language,
-                    'narrator': narrator,
-                    'thumb': thumb,
-                    'title': title,
-                    'url': murl,
-                }
-            )
-        return found
-
-    def run_search(self, helper, result):
+    def process_results(self, helper, result):
         # Walk the found items and gather extended information
         info = []
 
         log.separator(msg="Search results", log_level="info")
         for i, f in enumerate(result):
-            valid_itemId = helper.get_id_from_url(item=f)
-            if not valid_itemId:
-                continue
-
-            date = f['date']
+            date = self.getDateFromString(f['date'])
             year = ''
             if date is not None:
                 year = date.year
@@ -471,7 +384,7 @@ class AudiobookAlbum(Agent.Album):
                 if helper.check_if_preorder(date):
                     continue
 
-            self.score_result(f, helper, i, info, valid_itemId, year)
+            self.score_result(f, helper, i, info, year)
 
             # Print separators for easy reading
             if i <= len(result):
@@ -480,12 +393,12 @@ class AudiobookAlbum(Agent.Album):
         info = sorted(info, key=lambda inf: inf['score'], reverse=True)
         return info
 
-    def score_result(self, f, helper, i, info, valid_itemId, year):
-        author = f['author']
+    def score_result(self, f, helper, i, info, year):
+        asin = f['asin']
+        author = f['author'][0]['name']
         date = f['date']
         language = f['language']
-        narrator = f['narrator']
-        thumb = f['thumb']
+        narrator = f['narrator'][0]['name']
         title = f['title']
 
         # Array to hold score points for processing
@@ -512,25 +425,23 @@ class AudiobookAlbum(Agent.Album):
         log.info("Result #" + str(i + 1))
         # Log basic metadata
         data_to_log = [
-            {'ID is': valid_itemId},
+            {'ID is': asin},
             {'Title is': title},
             {'Author is': author},
             {'Narrator is': narrator},
             {'Date is ': str(date)},
             {'Score is': str(score)},
-            {'Thumb is': thumb},
         ]
         log.metadata(data_to_log, log_level="info")
 
         if score >= IGNORE_SCORE:
             info.append(
                 {
-                    'id': valid_itemId,
+                    'id': asin,
                     'title': title,
                     'year': year,
                     'date': date,
                     'score': score,
-                    'thumb': thumb,
                     'artist': author,
                     'narrator': narrator
                 }
@@ -596,40 +507,16 @@ class AudiobookAlbum(Agent.Album):
         Sorted by position in the update process
     """
 
-    def call_api(self, helper):
-        request = str(HTTP.Request(audnexus_api_url + helper.metadata.id))
+    def call_item_api(self, helper):
+        """
+            Calls Audnexus API to get book details, then calls helper to parse those details.
+        """
+        request = str(HTTP.Request(helper.UPDATE_URL + helper.metadata.id))
         response = json.loads(request)
+        helper.parse_api_response(response)
 
-        if 'authors' in response:
-            helper.author = response['authors']
-        if 'releaseDate' in response:
-            helper.date = self.getDateFromString(response['releaseDate'])
-        if 'genres' in response:
-            for genre in response['genres']:
-                if genre['type'] == 'parent':
-                    helper.genre_parent = genre['name']
-                else:
-                    helper.genre_child = genre['name']
-        if 'narrators' in response:
-            helper.narrator = response['narrators']
-        if 'rating' in response:
-            helper.rating = response['rating']
-        if 'seriesPrimary' in response:
-            helper.series = response['seriesPrimary']['name']
-            if 'position' in response['seriesPrimary']:
-                helper.volume = response['seriesPrimary']['position']
-        if 'seriesSecondary' in response:
-            helper.series2 = response['seriesSecondary']['name']
-            if 'position' in response['seriesSecondary']:
-                helper.volume2 = response['seriesSecondary']['position']
-        if 'publisherName' in response:
-            helper.studio = response['publisherName']
-        if 'summary' in response:
-            helper.synopsis = response['summary']
-        if 'image' in response:
-            helper.thumb = response['image']
-        if 'title' in response:
-            helper.title = response['title']
+        # Set date to date object
+        helper.date = self.getDateFromString(helper.date)
 
     def compile_metadata(self, helper):
         # Set the date and year if found.

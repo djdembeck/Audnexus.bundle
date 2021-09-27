@@ -2,9 +2,13 @@ from datetime import date
 import re
 # Import internal tools
 from logging import Logging
+import urllib
 
 # Setup logger
 log = Logging()
+
+SEARCH_URL = 'https://api.audible.com/1.0/catalog/products'
+SEARCH_PARAMS = '?response_groups=contributors,product_desc,product_attrs'
 
 
 class SearchTool:
@@ -13,6 +17,20 @@ class SearchTool:
         self.manual = manual
         self.media = media
         self.results = results
+
+    def build_url(self):
+        """
+            Generates the URL string with search paramaters for API call.
+        """
+        album_param = '&title=' + urllib.quote(self.normalizedName)
+        if self.media.artist:
+            artist_param = '&author=' + urllib.quote(self.media.artist)
+        else:
+            artist_param = ''
+
+        final_url = SEARCH_URL + SEARCH_PARAMS + album_param + artist_param
+
+        return final_url
 
     def check_if_preorder(self, book_date):
         current_date = (date.today())
@@ -31,6 +49,24 @@ class SearchTool:
 
         log.warn('No Match: %s', url)
         return None
+
+    def parse_api_response(self, api_response):
+        """
+            Collects keys used for each item from API response, for Plex search results.
+        """
+        search_results = []
+        for item in api_response['products']:
+            search_results.append(
+                {
+                    'asin': item['asin'],
+                    'author': item['authors'],
+                    'date': item['release_date'],
+                    'language': item['language'],
+                    'narrator': item['narrators'],
+                    'title': item['title'],
+                }
+            )
+        return search_results
 
     def pre_search_logging(self):
         log.separator(msg='ALBUM SEARCH', log_level="info")

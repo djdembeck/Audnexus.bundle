@@ -6,6 +6,8 @@ log = Logging()
 
 
 class UpdateTool:
+    UPDATE_URL = 'https://api.audnex.us/books/'
+    
     def __init__(self, force, lang, media, metadata, url):
         self.date = None
         self.force = force
@@ -21,48 +23,40 @@ class UpdateTool:
         self.volume = ''
         self.volume2 = ''
 
-    def re_parse_with_date_published(self, json_data):
-        for data in json_data:
-            if 'datePublished' in data:
-                self.date = data['datePublished']
-                self.title = data['name']
-                self.thumb = data['image']
-                # Set rating when available
-                if 'aggregateRating' in data:
-                    self.rating = (
-                        data['aggregateRating']['ratingValue']
-                    )
-                author_array = []
-                for c in data['author']:
-                    author_array.append(c['name'])
-                self.author = ",".join(author_array)
-
-                narrator_array = []
-                if 'readBy' in data:
-                    for c in data['readBy']:
-                        narrator_array.append(c['name'])
+    def parse_api_response(self, response):
+        """
+            Parses keys from API into helper variables if they exist.
+        """
+        if 'authors' in response:
+            self.author = response['authors']
+        if 'releaseDate' in response:
+            self.date = response['releaseDate']
+        if 'genres' in response:
+            for genre in response['genres']:
+                if genre['type'] == 'parent':
+                    self.genre_parent = genre['name']
                 else:
-                    log.warn("No narrator listed for: " + self.metadata.id)
-                    narrator_array.append("[Unknown Artist]")
-                self.narrator = ",".join(narrator_array)
-                self.studio = data['publisher']
-                self.synopsis = data['description']
-            if 'itemListElement' in data:
-                self.genre_parent = (
-                    data['itemListElement'][1]['item']['name']
-                )
-                try:
-                    self.genre_child = (
-                        data['itemListElement'][2]['item']['name']
-                    )
-                except AttributeError:
-                    continue
-                except IndexError:
-                    log.warn(
-                        '"' + self.title + '", '
-                        "only has one genre"
-                        )
-                    continue
+                    self.genre_child = genre['name']
+        if 'narrators' in response:
+            self.narrator = response['narrators']
+        if 'rating' in response:
+            self.rating = response['rating']
+        if 'seriesPrimary' in response:
+            self.series = response['seriesPrimary']['name']
+            if 'position' in response['seriesPrimary']:
+                self.volume = response['seriesPrimary']['position']
+        if 'seriesSecondary' in response:
+            self.series2 = response['seriesSecondary']['name']
+            if 'position' in response['seriesSecondary']:
+                self.volume2 = response['seriesSecondary']['position']
+        if 'publisherName' in response:
+            self.studio = response['publisherName']
+        if 'summary' in response:
+            self.synopsis = response['summary']
+        if 'image' in response:
+            self.thumb = response['image']
+        if 'title' in response:
+            self.title = response['title']
 
     # Writes metadata information to log.
     def writeInfo(self):
