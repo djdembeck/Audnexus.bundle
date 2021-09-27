@@ -299,6 +299,7 @@ class AudiobookAlbum(Agent.Album):
             .replace("<br />", "")
             .replace("<p>", "")
             .replace("</p>", "\n")
+            .strip()
         )
 
         # Handle single genre result
