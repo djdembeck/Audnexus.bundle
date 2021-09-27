@@ -158,7 +158,7 @@ class AudiobookAlbum(Agent.Album):
     prev_search_provider = 0
 
     def search(self, results, media, lang, manual):
-        url_info = SiteUrl(Prefs['sitetype'], Prefs['site'], lang)
+        url_info = SiteUrl(True, "www.audible.com", lang)
         ctx = url_info.SetupUrls()
 
         # Instantiate search helper
@@ -258,7 +258,7 @@ class AudiobookAlbum(Agent.Album):
                 break
 
     def update(self, metadata, media, lang, force=False):
-        url_info = SiteUrl(Prefs['sitetype'], Prefs['site'], lang)
+        url_info = SiteUrl(True, "www.audible.com", lang)
         ctx = url_info.SetupUrls()
 
         log.separator(

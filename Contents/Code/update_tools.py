@@ -17,11 +17,9 @@ class UpdateTool:
         self.rating = None
         self.series = ''
         self.series2 = ''
-        self.series_def = ''
         self.url = url
         self.volume = ''
         self.volume2 = ''
-        self.volume_def = ''
 
     def re_parse_with_date_published(self, json_data):
         for data in json_data:
