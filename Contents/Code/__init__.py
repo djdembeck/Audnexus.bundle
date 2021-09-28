@@ -157,9 +157,6 @@ class AudiobookAlbum(Agent.Album):
     prev_search_provider = 0
 
     def search(self, results, media, lang, manual):
-        url_info = SiteUrl(True, "www.audible.com", lang)
-        ctx = url_info.SetupUrls()
-
         # Instantiate search helper
         search_helper = SearchTool(lang, manual, media, results)
 
@@ -255,9 +252,6 @@ class AudiobookAlbum(Agent.Album):
                 break
 
     def update(self, metadata, media, lang, force=False):
-        url_info = SiteUrl(True, "www.audible.com", lang)
-        ctx = url_info.SetupUrls()
-
         log.separator(
             msg=(
                 "UPDATING: " + media.title + (
@@ -267,11 +261,8 @@ class AudiobookAlbum(Agent.Album):
             log_level="info"
         )
 
-        # Make url
-        url = ctx['AUD_BOOK_INFO'] % metadata.id
-
         # Instantiate update helper
-        update_helper = UpdateTool(force, lang, media, metadata, url)
+        update_helper = UpdateTool(force, lang, media, metadata)
 
         self.call_item_api(update_helper)
 
@@ -398,7 +389,7 @@ class AudiobookAlbum(Agent.Album):
         asin = f['asin']
         author = f['author'][0]['name']
         date = f['date']
-        language = f['language']
+        language = f['language'].title()
         narrator = f['narrator'][0]['name']
         title = f['title']
 
@@ -496,7 +487,7 @@ class AudiobookAlbum(Agent.Album):
             log.debug(
                 'Audible language: %s; Library language: %s',
                 language,
-                helper.lang
+                lang_dict[helper.lang]
             )
             log.debug("Book is not library language, deduct 2 points")
             return 2
