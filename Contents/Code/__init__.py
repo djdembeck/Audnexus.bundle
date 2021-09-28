@@ -522,9 +522,14 @@ class AudiobookAlbum(Agent.Album):
 
         # Other metadata
         helper.metadata.title = helper.title
+
+        series_with_volume = ''
+        if helper.series and helper.volume:
+            series_with_volume = helper.series + ', ' + helper.volume
+        # Add series/volume to sort title where possible.
         helper.metadata.title_sort = ' - '.join(
             filter(
-                None, [(helper.series + ', ' + helper.volume), helper.title]
+                None, [(series_with_volume), helper.title]
             )
         )
         helper.metadata.studio = helper.studio
