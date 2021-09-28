@@ -1,0 +1,17 @@
+[{
+	"id": "no_overwrite_genre",
+	"label": "Leave existing genres in place",
+	"type": "bool",
+	"default": "false"
+},{
+	"id": "logging_level",
+	"label": "Level of plugin logging: ",
+	"type": "enum",
+	"values": [
+		"DEBUG",
+		"INFO",
+		"WARN",
+		"ERROR"
+	],
+	"default": "WARN"
+}]
