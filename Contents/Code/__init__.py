@@ -8,8 +8,9 @@ from logging import Logging
 from search_tools import SearchTool
 from update_tools import UpdateTool
 from urls import SiteUrl
+from _version import __version__
 
-VERSION_NO = '2021.09.27.1'
+VERSION_NO = __version__
 
 # Starting value for score before deductions are taken.
 INITIAL_SCORE = 100
