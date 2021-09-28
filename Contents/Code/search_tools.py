@@ -23,9 +23,12 @@ class SearchTool:
             Generates the URL string with search paramaters for API call.
         """
         album_param = '&title=' + urllib.quote(self.normalizedName)
+        # Fix match/manual search doesn't provide author
         if self.media.artist:
             artist_param = '&author=' + urllib.quote(self.media.artist)
         else:
+            # Use keyword search to supplement missing author
+            album_param = '&keywords=' + urllib.quote(self.normalizedName)
             artist_param = ''
 
         final_url = SEARCH_URL + SEARCH_PARAMS + album_param + artist_param
@@ -103,21 +106,6 @@ class SearchTool:
             return
 
         if self.manual:
-            log.separator(msg="NOTE", log_level="info")
-            log.info(
-                'You clicked \'fix match\'. '
-                'This may have returned no useful results because '
-                'it\'s searching using the title of the first track.'
-            )
-            log.info(
-                'There\'s not currently a way around this initial failure. '
-                'But clicking \'Search Options\' and '
-                'entering the title works just fine.'
-            )
-            log.info(
-                'This message will appear during the initial '
-                'search and the actual manual search.'
-            )
             # If this is a custom search,
             # use the user-entered name instead of the scanner hint.
             if self.media.name:
