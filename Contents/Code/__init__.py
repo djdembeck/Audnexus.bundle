@@ -1,4 +1,4 @@
-# Audiobooks (Audible)
+# Audnexus Agent
 # coding: utf-8
 import json
 import Queue
@@ -44,7 +44,7 @@ def Start():
 
 
 class AudiobookArtist(Agent.Artist):
-    name = 'Audiobooks'
+    name = 'Audnexus Agent'
     languages = [Locale.Language.English, 'de', 'fr', 'it']
     primary_provider = True
     accepts_from = ['com.plexapp.agents.localmedia']
@@ -143,7 +143,7 @@ class AudiobookArtist(Agent.Artist):
 
 
 class AudiobookAlbum(Agent.Album):
-    name = 'Audiobooks'
+    name = 'Audnexus Agent'
     languages = [
         Locale.Language.English,
         'de',
@@ -538,19 +538,9 @@ class AudiobookAlbum(Agent.Album):
         helper.metadata.studio = helper.studio
         helper.metadata.summary = helper.synopsis
 
-        if Prefs['cover_options'] == (
-            "Use Audible cover"
-        ):
-            helper.metadata.posters[1] = Proxy.Media(
-                HTTP.Request(helper.thumb)
-            )
-            helper.metadata.posters.validate_keys(helper.thumb)
-        elif Prefs['cover_options'] == (
-            "Download cover but don't overwrite existing"
-        ):
-            helper.metadata.posters[helper.thumb] = Proxy.Media(
-                HTTP.Request(helper.thumb), sort_order=1
-            )
+        helper.metadata.posters[helper.thumb] = Proxy.Media(
+            HTTP.Request(helper.thumb), sort_order=0
+        )
 
         # Use rating only when available
         if helper.rating:

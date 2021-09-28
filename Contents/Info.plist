@@ -5,9 +5,9 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>English</string>
 	<key>CFBundleExecutable</key>
-	<string>Audnexus</string>
+	<string>Audnexus Agent</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.plexapp.agents.audiobooks</string>
+	<string>com.plexapp.agents.audnexus</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleShortVersionString</key>
