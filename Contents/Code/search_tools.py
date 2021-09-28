@@ -56,16 +56,25 @@ class SearchTool:
         """
         search_results = []
         for item in api_response['products']:
-            search_results.append(
-                {
-                    'asin': item['asin'],
-                    'author': item['authors'],
-                    'date': item['release_date'],
-                    'language': item['language'],
-                    'narrator': item['narrators'],
-                    'title': item['title'],
-                }
-            )
+            # Only append results which have valid keys
+            if item.viewkeys() >= {
+                "asin",
+                "authors",
+                "release_date",
+                "language",
+                "narrators",
+                "title"
+            }:
+                search_results.append(
+                    {
+                        'asin': item['asin'],
+                        'author': item['authors'],
+                        'date': item['release_date'],
+                        'language': item['language'],
+                        'narrator': item['narrators'],
+                        'title': item['title'],
+                    }
+                )
         return search_results
 
     def pre_search_logging(self):
