@@ -19,6 +19,8 @@ GOOD_SCORE = 98
 # Any score lower than this will be ignored.
 IGNORE_SCORE = 45
 
+THREAD_MAX = 20
+
 # Setup logger
 log = Logging()
 
@@ -160,7 +162,10 @@ class AudiobookAlbum(Agent.Album):
         # Instantiate search helper
         search_helper = SearchTool(lang, manual, media, results)
 
-        search_helper.pre_search_logging()
+        pre_check = search_helper.pre_search_logging()
+        # Purposefully terminate search if it's bad
+        if not pre_check:
+            return
 
         # Run helper before passing to SearchTool
         normalizedName = self.normalize_name(search_helper.media.album)
@@ -356,7 +361,7 @@ class AudiobookAlbum(Agent.Album):
             Builds URL then calls API, returns the JSON to helper function.
         """
         search_url = helper.build_url()
-        request = str(HTTP.Request(search_url))
+        request = str(HTTP.Request(search_url, timeout=15))
         response = json.loads(request)
         results_list = helper.parse_api_response(response)
         return results_list
@@ -401,7 +406,7 @@ class AudiobookAlbum(Agent.Album):
         if title_score:
             all_scores.append(title_score)
         # Author name score
-        author_score = self.score_author(author, helper)
+        author_score = self.score_author(helper, author)
         if author_score:
             all_scores.append(author_score)
         # Library language score
@@ -457,7 +462,7 @@ class AudiobookAlbum(Agent.Album):
         log.debug("Score from album: " + str(album_score))
         return album_score
 
-    def score_author(self, author, helper):
+    def score_author(self, helper, author):
         """
             Compare the input author similarity to the search result author.
             Score is calculated with LevenshteinDistance
@@ -501,9 +506,10 @@ class AudiobookAlbum(Agent.Album):
 
     def call_item_api(self, helper):
         """
-            Calls Audnexus API to get book details, then calls helper to parse those details.
+            Calls Audnexus API to get book details,
+            then calls helper to parse those details.
         """
-        request = str(HTTP.Request(helper.UPDATE_URL + helper.metadata.id))
+        request = str(HTTP.Request(helper.UPDATE_URL + helper.metadata.id, timeout=15))
         response = json.loads(request)
         helper.parse_api_response(response)
 
@@ -536,7 +542,7 @@ class AudiobookAlbum(Agent.Album):
         helper.metadata.summary = helper.synopsis
 
         helper.metadata.posters[helper.thumb] = Proxy.Media(
-            HTTP.Request(helper.thumb), sort_order=0
+            HTTP.Request(helper.thumb, timeout=15), sort_order=0
         )
 
         # Use rating only when available

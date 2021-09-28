@@ -63,9 +63,9 @@ class SearchTool:
             if item.viewkeys() >= {
                 "asin",
                 "authors",
-                "release_date",
                 "language",
                 "narrators",
+                "release_date",
                 "title"
             }:
                 search_results.append(
@@ -96,14 +96,18 @@ class SearchTool:
         # Handle a couple of edge cases where
         # album search will give bad results.
         if self.media.album is None and not self.manual:
+            if self.media.title:
+                log.warn('Using track title since album title is missing.')
+                self.media.album = self.media.title
+                return True
             log.info('Album Title is NULL on an automatic search.  Returning')
-            return
+            return None
         if self.media.album == '[Unknown Album]' and not self.manual:
             log.info(
                 'Album Title is [Unknown Album]'
                 ' on an automatic search.  Returning'
             )
-            return
+            return None
 
         if self.manual:
             # If this is a custom search,
@@ -113,6 +117,7 @@ class SearchTool:
                     'Custom album search for: ' + self.media.name
                 )
                 self.media.album = self.media.name
+                return True
 
     def strip_title(self, normalizedName):
         if not normalizedName:
