@@ -117,7 +117,7 @@ class SearchTool:
                     'Custom album search for: ' + self.media.name
                 )
                 self.media.album = self.media.name
-                return True
+        return True
 
     def strip_title(self, normalizedName):
         if not normalizedName:

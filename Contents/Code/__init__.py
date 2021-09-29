@@ -165,6 +165,7 @@ class AudiobookAlbum(Agent.Album):
         pre_check = search_helper.pre_search_logging()
         # Purposefully terminate search if it's bad
         if not pre_check:
+            log.debug("Didn't pass pre-check")
             return
 
         # Run helper before passing to SearchTool
