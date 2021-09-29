@@ -461,7 +461,7 @@ class AudiobookAlbum(Agent.Album):
         album_score = Util.LevenshteinDistance(
             scorebase1, scorebase2
         )
-        log.debug("Score from album: " + str(album_score))
+        log.debug("Score deduction from album: " + str(album_score))
         return album_score
 
     def score_author(self, helper, author):
@@ -475,7 +475,7 @@ class AudiobookAlbum(Agent.Album):
             author_score = Util.LevenshteinDistance(
                 scorebase3, scorebase4
             )
-            log.debug("Score from author: " + str(author_score))
+            log.debug("Score deduction from author: " + str(author_score))
             return author_score
 
     def score_language(self, helper, language):
