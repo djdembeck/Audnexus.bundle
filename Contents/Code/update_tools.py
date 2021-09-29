@@ -8,7 +8,7 @@ log = Logging()
 class UpdateTool:
     UPDATE_URL = 'https://api.audnex.us/books/'
 
-    def __init__(self, force, lang, media, metadata, url):
+    def __init__(self, force, lang, media, metadata):
         self.date = None
         self.force = force
         self.genre_child = None
@@ -20,7 +20,6 @@ class UpdateTool:
         self.series = ''
         self.series2 = ''
         self.thumb = ''
-        self.url = url
         self.volume = ''
         self.volume2 = ''
 
@@ -66,7 +65,6 @@ class UpdateTool:
         # Log basic metadata
         data_to_log = [
             {'ID': self.metadata.id},
-            {'URL': self.url},
             {'Title': self.metadata.title},
             {'Release date': str(self.metadata.originally_available_at)},
             {'Studio': self.metadata.studio},

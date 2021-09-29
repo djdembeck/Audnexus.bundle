@@ -19,6 +19,8 @@ GOOD_SCORE = 98
 # Any score lower than this will be ignored.
 IGNORE_SCORE = 45
 
+THREAD_MAX = 20
+
 # Setup logger
 log = Logging()
 
@@ -157,13 +159,14 @@ class AudiobookAlbum(Agent.Album):
     prev_search_provider = 0
 
     def search(self, results, media, lang, manual):
-        url_info = SiteUrl(True, "www.audible.com", lang)
-        ctx = url_info.SetupUrls()
-
         # Instantiate search helper
         search_helper = SearchTool(lang, manual, media, results)
 
-        search_helper.pre_search_logging()
+        pre_check = search_helper.pre_search_logging()
+        # Purposefully terminate search if it's bad
+        if not pre_check:
+            log.debug("Didn't pass pre-check")
+            return
 
         # Run helper before passing to SearchTool
         normalizedName = self.normalize_name(search_helper.media.album)
@@ -255,9 +258,6 @@ class AudiobookAlbum(Agent.Album):
                 break
 
     def update(self, metadata, media, lang, force=False):
-        url_info = SiteUrl(True, "www.audible.com", lang)
-        ctx = url_info.SetupUrls()
-
         log.separator(
             msg=(
                 "UPDATING: " + media.title + (
@@ -267,11 +267,8 @@ class AudiobookAlbum(Agent.Album):
             log_level="info"
         )
 
-        # Make url
-        url = ctx['AUD_BOOK_INFO'] % metadata.id
-
         # Instantiate update helper
-        update_helper = UpdateTool(force, lang, media, metadata, url)
+        update_helper = UpdateTool(force, lang, media, metadata)
 
         self.call_item_api(update_helper)
 
@@ -365,7 +362,7 @@ class AudiobookAlbum(Agent.Album):
             Builds URL then calls API, returns the JSON to helper function.
         """
         search_url = helper.build_url()
-        request = str(HTTP.Request(search_url))
+        request = str(HTTP.Request(search_url, timeout=15))
         response = json.loads(request)
         results_list = helper.parse_api_response(response)
         return results_list
@@ -398,7 +395,7 @@ class AudiobookAlbum(Agent.Album):
         asin = f['asin']
         author = f['author'][0]['name']
         date = f['date']
-        language = f['language']
+        language = f['language'].title()
         narrator = f['narrator'][0]['name']
         title = f['title']
 
@@ -410,7 +407,7 @@ class AudiobookAlbum(Agent.Album):
         if title_score:
             all_scores.append(title_score)
         # Author name score
-        author_score = self.score_author(author, helper)
+        author_score = self.score_author(helper, author)
         if author_score:
             all_scores.append(author_score)
         # Library language score
@@ -421,7 +418,8 @@ class AudiobookAlbum(Agent.Album):
         # Because builtin sum() isn't available
         sum_scores=lambda numberlist:reduce(lambda x,y:x+y,numberlist,0)
         # Subtract difference from initial score
-        score = INITIAL_SCORE - sum_scores(all_scores)
+        # Subtract index to use Audible relevance as weight
+        score = INITIAL_SCORE - sum_scores(all_scores) - i
 
         log.info("Result #" + str(i + 1))
         # Log basic metadata
@@ -466,7 +464,7 @@ class AudiobookAlbum(Agent.Album):
         log.debug("Score from album: " + str(album_score))
         return album_score
 
-    def score_author(self, author, helper):
+    def score_author(self, helper, author):
         """
             Compare the input author similarity to the search result author.
             Score is calculated with LevenshteinDistance
@@ -496,7 +494,7 @@ class AudiobookAlbum(Agent.Album):
             log.debug(
                 'Audible language: %s; Library language: %s',
                 language,
-                helper.lang
+                lang_dict[helper.lang]
             )
             log.debug("Book is not library language, deduct 2 points")
             return 2
@@ -510,9 +508,10 @@ class AudiobookAlbum(Agent.Album):
 
     def call_item_api(self, helper):
         """
-            Calls Audnexus API to get book details, then calls helper to parse those details.
+            Calls Audnexus API to get book details,
+            then calls helper to parse those details.
         """
-        request = str(HTTP.Request(helper.UPDATE_URL + helper.metadata.id))
+        request = str(HTTP.Request(helper.UPDATE_URL + helper.metadata.id, timeout=15))
         response = json.loads(request)
         helper.parse_api_response(response)
 
@@ -531,16 +530,21 @@ class AudiobookAlbum(Agent.Album):
 
         # Other metadata
         helper.metadata.title = helper.title
+
+        series_with_volume = ''
+        if helper.series and helper.volume:
+            series_with_volume = helper.series + ', ' + helper.volume
+        # Add series/volume to sort title where possible.
         helper.metadata.title_sort = ' - '.join(
             filter(
-                None, [(helper.series + ', ' + helper.volume), helper.title]
+                None, [(series_with_volume), helper.title]
             )
         )
         helper.metadata.studio = helper.studio
         helper.metadata.summary = helper.synopsis
 
         helper.metadata.posters[helper.thumb] = Proxy.Media(
-            HTTP.Request(helper.thumb), sort_order=0
+            HTTP.Request(helper.thumb, timeout=15), sort_order=0
         )
 
         # Use rating only when available

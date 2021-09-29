@@ -8,7 +8,9 @@ import urllib
 log = Logging()
 
 SEARCH_URL = 'https://api.audible.com/1.0/catalog/products'
-SEARCH_PARAMS = '?response_groups=contributors,product_desc,product_attrs'
+SEARCH_PARAMS = (
+    '?response_groups=contributors,product_desc,product_attrs'
+    '&num_results=25&products_sort_by=Relevance')
 
 
 class SearchTool:
@@ -23,9 +25,12 @@ class SearchTool:
             Generates the URL string with search paramaters for API call.
         """
         album_param = '&title=' + urllib.quote(self.normalizedName)
+        # Fix match/manual search doesn't provide author
         if self.media.artist:
             artist_param = '&author=' + urllib.quote(self.media.artist)
         else:
+            # Use keyword search to supplement missing author
+            album_param = '&keywords=' + urllib.quote(self.normalizedName)
             artist_param = ''
 
         final_url = SEARCH_URL + SEARCH_PARAMS + album_param + artist_param
@@ -60,9 +65,9 @@ class SearchTool:
             if item.viewkeys() >= {
                 "asin",
                 "authors",
-                "release_date",
                 "language",
                 "narrators",
+                "release_date",
                 "title"
             }:
                 search_results.append(
@@ -93,31 +98,20 @@ class SearchTool:
         # Handle a couple of edge cases where
         # album search will give bad results.
         if self.media.album is None and not self.manual:
+            if self.media.title:
+                log.warn('Using track title since album title is missing.')
+                self.media.album = self.media.title
+                return True
             log.info('Album Title is NULL on an automatic search.  Returning')
-            return
+            return None
         if self.media.album == '[Unknown Album]' and not self.manual:
             log.info(
                 'Album Title is [Unknown Album]'
                 ' on an automatic search.  Returning'
             )
-            return
+            return None
 
         if self.manual:
-            log.separator(msg="NOTE", log_level="info")
-            log.info(
-                'You clicked \'fix match\'. '
-                'This may have returned no useful results because '
-                'it\'s searching using the title of the first track.'
-            )
-            log.info(
-                'There\'s not currently a way around this initial failure. '
-                'But clicking \'Search Options\' and '
-                'entering the title works just fine.'
-            )
-            log.info(
-                'This message will appear during the initial '
-                'search and the actual manual search.'
-            )
             # If this is a custom search,
             # use the user-entered name instead of the scanner hint.
             if self.media.name:
@@ -125,6 +119,7 @@ class SearchTool:
                     'Custom album search for: ' + self.media.name
                 )
                 self.media.album = self.media.name
+        return True
 
     def strip_title(self, normalizedName):
         if not normalizedName:
