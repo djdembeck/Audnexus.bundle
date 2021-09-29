@@ -418,7 +418,8 @@ class AudiobookAlbum(Agent.Album):
         # Because builtin sum() isn't available
         sum_scores=lambda numberlist:reduce(lambda x,y:x+y,numberlist,0)
         # Subtract difference from initial score
-        score = INITIAL_SCORE - sum_scores(all_scores)
+        # Subtract index to use Audible relevance as weight
+        score = INITIAL_SCORE - sum_scores(all_scores) - i
 
         log.info("Result #" + str(i + 1))
         # Log basic metadata

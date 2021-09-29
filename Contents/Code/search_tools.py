@@ -8,7 +8,9 @@ import urllib
 log = Logging()
 
 SEARCH_URL = 'https://api.audible.com/1.0/catalog/products'
-SEARCH_PARAMS = '?response_groups=contributors,product_desc,product_attrs'
+SEARCH_PARAMS = (
+    '?response_groups=contributors,product_desc,product_attrs'
+    '&num_results=25&products_sort_by=Relevance')
 
 
 class SearchTool:
