@@ -233,7 +233,10 @@ class AudiobookArtist(Agent.Artist):
             scorebase3 = helper.media.artist
             scorebase4 = author
             author_score = Util.LevenshteinDistance(
-                scorebase3, scorebase4
+                scorebase3.lower()
+                .replace('-', '').replace(' ', '').replace('.', ''),
+                scorebase4.lower()
+                .replace('-', '').replace(' ', '').replace('.', '')
             )
             log.debug("Score deduction from author: " + str(author_score))
             return author_score
