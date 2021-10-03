@@ -11,8 +11,7 @@ class UpdateTool:
     def __init__(self, force, lang, media, metadata):
         self.date = None
         self.force = force
-        self.genre_child = None
-        self.genre_parent = None
+        self.genres = None
         self.lang = lang
         self.media = media
         self.metadata = metadata
@@ -32,11 +31,7 @@ class UpdateTool:
         if 'releaseDate' in response:
             self.date = response['releaseDate']
         if 'genres' in response:
-            for genre in response['genres']:
-                if genre['type'] == 'parent':
-                    self.genre_parent = genre['name']
-                else:
-                    self.genre_child = genre['name']
+            self.genres = response['genres']
         if 'narrators' in response:
             self.narrator = response['narrators']
         if 'rating' in response:

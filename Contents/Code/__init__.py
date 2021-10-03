@@ -7,7 +7,6 @@ import re
 from logging import Logging
 from search_tools import SearchTool
 from update_tools import UpdateTool
-from urls import SiteUrl
 from _version import version
 
 VERSION_NO = version
@@ -296,19 +295,13 @@ class AudiobookAlbum(Agent.Album):
             .strip()
         )
 
-        # Handle single genre result
-        if update_helper.genre_child:
-            genre_string = (
-                update_helper.genre_parent + ', ' + update_helper.genre_child
-            )
-        else:
-            genre_string = update_helper.genre_parent
-
         # Setup logging of all data in the array
         data_to_log = [
             {'author': update_helper.author},
             {'date': update_helper.date},
-            {'genres': genre_string},
+            {'genres': ', '.join(
+                genre['name'] for genre in update_helper.genres
+            )},
             {'narrator': update_helper.narrator},
             {'rating': update_helper.rating},
             {'series': update_helper.series},
@@ -559,10 +552,9 @@ class AudiobookAlbum(Agent.Album):
         """
         if not Prefs['no_overwrite_genre']:
             helper.metadata.genres.clear()
-            helper.metadata.genres.add(helper.genre_parent)
-            # Not all books have 2 genres
-            if helper.genre_child:
-                helper.metadata.genres.add(helper.genre_child)
+            for genre in helper.genres:
+                if genre['name']:
+                    helper.metadata.genres.add(genre['name'])
 
     def add_narrators_to_styles(self, helper):
         """
