@@ -297,12 +297,16 @@ class AudiobookAlbum(Agent.Album):
 
         # Setup logging of all data in the array
         data_to_log = [
-            {'author': update_helper.author},
+            {'author': ', '.join(
+                genre['name'] for genre in update_helper.author
+            )},
             {'date': update_helper.date},
             {'genres': ', '.join(
                 genre['name'] for genre in update_helper.genres
             )},
-            {'narrator': update_helper.narrator},
+            {'narrator': ', '.join(
+                genre['name'] for genre in update_helper.narrator
+            )},
             {'rating': update_helper.rating},
             {'series': update_helper.series},
             {'series2': update_helper.series2},
