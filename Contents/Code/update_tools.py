@@ -5,7 +5,7 @@ from logging import Logging
 log = Logging()
 
 
-class UpdateTool:
+class AlbumUpdateTool:
     UPDATE_URL = 'https://api.audnex.us/books/'
 
     def __init__(self, force, lang, media, metadata):
@@ -73,6 +73,53 @@ class UpdateTool:
             {'Genres': self.metadata.genres},
             {'Moods(Authors)': self.metadata.moods},
             {'Styles(Narrators)': self.metadata.styles},
+        ]
+        log.metadata_arrs(multi_arr, log_level="info")
+
+        log.separator(log_level="info")
+
+
+class ArtistUpdateTool:
+    UPDATE_URL = 'https://api.audnex.us/authors/'
+
+    def __init__(self, force, lang, media, metadata):
+        self.date = None
+        self.force = force
+        self.genres = None
+        self.lang = lang
+        self.media = media
+        self.metadata = metadata
+        self.thumb = ''
+
+    def parse_api_response(self, response):
+        """
+            Parses keys from API into helper variables if they exist.
+        """
+        if 'description' in response:
+            self.description = response['description']
+        if 'genres' in response:
+            self.genres = response['genres']
+        if 'name' in response:
+            self.name = response['name']
+        if 'image' in response:
+            self.thumb = response['image']
+
+    # Writes metadata information to log.
+    def writeInfo(self):
+        log.separator(msg='New data', log_level="info")
+
+        # Log basic metadata
+        data_to_log = [
+            {'ID': self.metadata.id},
+            {'Title': self.metadata.title},
+            {'Summary': self.metadata.summary},
+            {'Poster URL': self.thumb},
+        ]
+        log.metadata(data_to_log, log_level="info")
+
+        # Log basic metadata stored in arrays
+        multi_arr = [
+            {'Genres': self.metadata.genres},
         ]
         log.metadata_arrs(multi_arr, log_level="info")
 
