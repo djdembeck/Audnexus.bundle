@@ -259,6 +259,16 @@ class AudiobookArtist(Agent.Artist):
         # Title.
         if not helper.metadata.title or helper.force:
             helper.metadata.title = helper.name
+        # Sort Title.
+        if not helper.metadata.title_sort or helper.force:
+            split_author_surname = re.match(
+                '^(.+?).([^\s,]+)(,?.(?:[JS]r\.?|III?|IV))?$',
+                helper.name,
+            )
+            helper.metadata.title_sort = (
+                split_author_surname.group(2) + ', ' +
+                split_author_surname.group(1)
+            )
         # Thumb.
         if helper.thumb not in helper.metadata.posters or helper.force:
             helper.metadata.posters[helper.thumb] = Proxy.Media(
