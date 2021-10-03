@@ -1,7 +1,6 @@
 # Audnexus Agent
 # coding: utf-8
 import json
-import Queue
 import re
 # Import internal tools
 from logging import Logging
@@ -265,15 +264,22 @@ class AudiobookArtist(Agent.Artist):
                 '^(.+?).([^\s,]+)(,?.(?:[JS]r\.?|III?|IV))?$',
                 helper.name,
             )
-            helper.metadata.title_sort = (
-                split_author_surname.group(2) + ', ' +
-                split_author_surname.group(1)
+            helper.metadata.title_sort = ', '.join(
+                filter(
+                    None,
+                    [
+                        (split_author_surname.group(2) + ', ' +
+                        split_author_surname.group(1)),
+                        split_author_surname.group(3)
+                    ]
+                )
             )
         # Thumb.
-        if helper.thumb not in helper.metadata.posters or helper.force:
-            helper.metadata.posters[helper.thumb] = Proxy.Media(
-                HTTP.Request(helper.thumb, timeout=15), sort_order=0
-            )
+        if helper.thumb:
+            if helper.thumb not in helper.metadata.posters or helper.force:
+                helper.metadata.posters[helper.thumb] = Proxy.Media(
+                    HTTP.Request(helper.thumb, timeout=15), sort_order=0
+                )
 
         helper.writeInfo()
 
@@ -293,22 +299,6 @@ class AudiobookArtist(Agent.Artist):
 
     def makeProxyUrl(self, url, referer):
         return Prefs['imageproxyurl'] + ('?url=%s&referer=%s' % (url, referer))
-
-    def worker(self, queue, stoprequest):
-        while not stoprequest.isSet():
-            try:
-                func, args, kargs = queue.get(True, 0.05)
-                try:
-                    func(*args, **kargs)
-                except Exception as e:
-                    log.error(e)
-                queue.task_done()
-            except Queue.Empty:
-                continue
-
-    def addTask(self, queue, func, *args, **kargs):
-        queue.put((func, args, kargs))
-
 
 class AudiobookAlbum(Agent.Album):
     name = 'Audnexus Agent'
@@ -710,10 +700,11 @@ class AudiobookAlbum(Agent.Album):
         if not helper.metadata.summary or helper.force:
             helper.metadata.summary = helper.synopsis
         # Thumb.
-        if helper.thumb not in helper.metadata.posters or helper.force:
-            helper.metadata.posters[helper.thumb] = Proxy.Media(
-                HTTP.Request(helper.thumb, timeout=15), sort_order=0
-            )
+        if helper.thumb:
+            if helper.thumb not in helper.metadata.posters or helper.force:
+                helper.metadata.posters[helper.thumb] = Proxy.Media(
+                    HTTP.Request(helper.thumb, timeout=15), sort_order=0
+                )
         # Rating.
         # We always want to refresh the rating
         if helper.rating:
@@ -789,26 +780,6 @@ class AudiobookAlbum(Agent.Album):
 
     def makeProxyUrl(self, url, referer):
         return Prefs['imageproxyurl'] + ('?url=%s&referer=%s' % (url, referer))
-
-    """
-        Queueing functions
-    """
-
-    def worker(self, queue, stoprequest):
-        while not stoprequest.isSet():
-            try:
-                func, args, kargs = queue.get(True, 0.05)
-                try:
-                    func(*args, **kargs)
-                except Exception as e:
-                    log.error(e)
-                queue.task_done()
-            except Queue.Empty:
-                continue
-
-    def addTask(self, queue, func, *args, **kargs):
-        queue.put((func, args, kargs))
-
 
 # Common helpers
 def json_decode(output):
