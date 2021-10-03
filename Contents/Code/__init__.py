@@ -72,13 +72,13 @@ class AudiobookArtist(Agent.Artist):
         if not result:
             log.warn(
                 'No results found for query "%s"',
-                media.artist
+                search_helper.media.artist
             )
             return
         log.debug(
             'Found %s result(s) for query "%s"',
             len(result),
-            media.artist
+            search_helper.media.artist
         )
 
         info = self.process_results(search_helper, result)

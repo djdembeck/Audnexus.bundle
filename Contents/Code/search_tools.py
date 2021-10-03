@@ -213,10 +213,19 @@ class ArtistSearchTool:
 
     def validate_author_name(self):
         """
-            Checks a list of known bad author names.
+            Checks for combined authors and a list of known bad author names.
             If matched, author name is set to None to prevent
             it being used in search query.
         """
+        if ',' in self.media.artist:
+            split_authors = self.media.artist.split(',')
+            log.info(
+                'Merging multi-author "' +
+                self.media.artist +
+                '" into top-level author "' +
+                split_authors[0] + '"'
+            )
+            self.media.artist = split_authors[0]
         strings_to_check = [
             "[Unknown Artist]"
         ]

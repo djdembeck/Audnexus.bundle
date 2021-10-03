@@ -1,6 +1,7 @@
 {
     "conventionalCommits.scopes": [
         "search",
-        "update"
+        "update",
+        "author-search"
     ]
 }
