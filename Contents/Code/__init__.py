@@ -38,7 +38,7 @@ def Start():
     HTTP.Headers['Accept-Encoding'] = 'gzip'
     log.separator(
         msg=(
-            "Audible Audiobooks Agent v" + VERSION_NO
+            "Audnexus Audiobooks Agent v" + VERSION_NO
         ),
         log_level="info"
     )
@@ -287,7 +287,7 @@ class AudiobookArtist(Agent.Artist):
         """
             Add genre(s) to Plex genres where available and depending on preference.
         """
-        if not Prefs['no_overwrite_genre']:
+        if not Prefs['no_overwrite_genre'] and helper.genres:
             if not helper.metadata.genres or helper.force:
                 helper.metadata.genres.clear()
                 for genre in helper.genres:
@@ -447,16 +447,19 @@ class AudiobookAlbum(Agent.Album):
         )
 
         # Setup logging of all data in the array
+        list_of_tags = ''
+        if update_helper.genres:
+            list_of_tags = ', '.join(
+                (genre['name'] for genre in update_helper.genres)
+            )
         data_to_log = [
             {'author': ', '.join(
-                genre['name'] for genre in update_helper.author
+                author['name'] for author in update_helper.author
             )},
             {'date': update_helper.date},
-            {'genres': ', '.join(
-                genre['name'] for genre in update_helper.genres
-            )},
+            {'genres': list_of_tags},
             {'narrator': ', '.join(
-                genre['name'] for genre in update_helper.narrator
+                narrator['name'] for narrator in update_helper.narrator
             )},
             {'rating': update_helper.rating},
             {'series': update_helper.series},
@@ -716,7 +719,7 @@ class AudiobookAlbum(Agent.Album):
         """
             Add genre(s) to Plex genres where available and depending on preference.
         """
-        if not Prefs['no_overwrite_genre']:
+        if not Prefs['no_overwrite_genre'] and helper.genres:
             if not helper.metadata.genres or helper.force:
                 helper.metadata.genres.clear()
                 for genre in helper.genres:
