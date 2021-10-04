@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.2.0](https://github.com/djdembeck/Audnexus.bundle/compare/v0.1.1...v0.2.0) (2021-10-04)
+
+
+### Features
+
+* :building_construction: add author support ([a18cda6](https://github.com/djdembeck/Audnexus.bundle/commit/a18cda64aed4cf3b90d41dc0c695af7e38725142))
+* **author-search:** :sparkles: search/upgrade multi-author entries to single author entries ([e5d70dd](https://github.com/djdembeck/Audnexus.bundle/commit/e5d70ddcbb2b263c1a2dd6bf075b1628fb0c7d18))
+* **author-update:** :sparkles: set author sort name ([e6e616b](https://github.com/djdembeck/Audnexus.bundle/commit/e6e616b683bcee62e67ba770b17417881a03453b))
+* **update:** :sparkles: utilize tag list instead of 2 genre system ([7cd863f](https://github.com/djdembeck/Audnexus.bundle/commit/7cd863f5101d64ef2715390ba84b52379194eb8d))
+
+
+### Bug Fixes
+
+* :bug: fix case where no genres exist. fixes [#7](https://github.com/djdembeck/Audnexus.bundle/issues/7) ([2a017e9](https://github.com/djdembeck/Audnexus.bundle/commit/2a017e9bce4fa08013a4538ec7d732a122bc6c00))
+* :bug: only request thumb when it exists ([498bbb3](https://github.com/djdembeck/Audnexus.bundle/commit/498bbb37d69b321b90a33d7849c7164fbd8721e9))
+
 ### 0.1.1 (2021-09-29)
 
 
