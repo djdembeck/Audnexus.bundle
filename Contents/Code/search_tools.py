@@ -7,13 +7,14 @@ import urllib
 # Setup logger
 log = Logging()
 
-SEARCH_URL = 'https://api.audible.com/1.0/catalog/products'
-SEARCH_PARAMS = (
-    '?response_groups=contributors,product_desc,product_attrs'
-    '&num_results=25&products_sort_by=Relevance')
 
+class AlbumSearchTool:
+    SEARCH_URL = 'https://api.audible.com/1.0/catalog/products'
+    SEARCH_PARAMS = (
+        '?response_groups=contributors,product_desc,product_attrs'
+        '&num_results=25&products_sort_by=Relevance'
+    )
 
-class SearchTool:
     def __init__(self, lang, manual, media, results):
         self.lang = lang
         self.manual = manual
@@ -33,7 +34,9 @@ class SearchTool:
             album_param = '&keywords=' + urllib.quote(self.normalizedName)
             artist_param = ''
 
-        final_url = SEARCH_URL + SEARCH_PARAMS + album_param + artist_param
+        final_url = (
+            self.SEARCH_URL + self.SEARCH_PARAMS + album_param + artist_param
+        )
 
         return final_url
 
@@ -155,6 +158,74 @@ class SearchTool:
             If matched, author name is set to None to prevent
             it being used in search query.
         """
+        strings_to_check = [
+            "[Unknown Artist]"
+        ]
+        for test_name in strings_to_check:
+            if self.media.artist == test_name:
+                self.media.artist = None
+                log.info(
+                    "Artist name seems to be bad, "
+                    "not using it in search."
+                )
+                break
+
+
+class ArtistSearchTool:
+    SEARCH_URL = 'https://api.audnex.us/authors'
+
+    def __init__(self, lang, manual, media, results):
+        self.lang = lang
+        self.manual = manual
+        self.media = media
+        self.results = results
+
+    def build_url(self):
+        """
+            Generates the URL string with search paramaters for API call.
+        """
+        artist_param = '?name=' + urllib.quote(self.media.artist)
+
+        final_url = (
+            self.SEARCH_URL + artist_param
+        )
+
+        return final_url
+
+    def parse_api_response(self, api_response):
+        """
+            Collects keys used for each item from API response, for Plex search results.
+        """
+        search_results = []
+        for item in api_response:
+            # Only append results which have valid keys
+            if item.viewkeys() >= {
+                "asin",
+                "name",
+            }:
+                search_results.append(
+                    {
+                        'asin': item['asin'],
+                        'name': item['name'],
+                    }
+                )
+        return search_results
+
+    def validate_author_name(self):
+        """
+            Checks for combined authors and a list of known bad author names.
+            If matched, author name is set to None to prevent
+            it being used in search query.
+        """
+        if ',' in self.media.artist:
+            split_authors = self.media.artist.split(',')
+            log.info(
+                'Merging multi-author "' +
+                self.media.artist +
+                '" into top-level author "' +
+                split_authors[0] + '"'
+            )
+            self.media.artist = split_authors[0]
         strings_to_check = [
             "[Unknown Artist]"
         ]
