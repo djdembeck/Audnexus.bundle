@@ -232,10 +232,8 @@ class AudiobookArtist(Agent.Artist):
             scorebase3 = helper.media.artist
             scorebase4 = author
             author_score = Util.LevenshteinDistance(
-                scorebase3.lower()
-                .replace('-', '').replace(' ', '').replace('.', ''),
-                scorebase4.lower()
-                .replace('-', '').replace(' ', '').replace('.', '')
+                reduce_string(scorebase3),
+                reduce_string(scorebase4)
             )
             log.debug("Score deduction from author: " + str(author_score))
             return author_score
@@ -610,7 +608,8 @@ class AudiobookAlbum(Agent.Album):
         scorebase1 = helper.media.album
         scorebase2 = title.encode('utf-8')
         album_score = Util.LevenshteinDistance(
-            scorebase1, scorebase2
+            reduce_string(scorebase1),
+            reduce_string(scorebase2)
         )
         log.debug("Score deduction from album: " + str(album_score))
         return album_score
@@ -624,7 +623,8 @@ class AudiobookAlbum(Agent.Album):
             scorebase3 = helper.media.artist
             scorebase4 = author
             author_score = Util.LevenshteinDistance(
-                scorebase3, scorebase4
+                reduce_string(scorebase3),
+                reduce_string(scorebase4)
             )
             log.debug("Score deduction from author: " + str(author_score))
             return author_score
@@ -784,9 +784,20 @@ class AudiobookAlbum(Agent.Album):
     def makeProxyUrl(self, url, referer):
         return Prefs['imageproxyurl'] + ('?url=%s&referer=%s' % (url, referer))
 
+
 # Common helpers
 def json_decode(output):
     try:
         return json.loads(output, encoding="utf-8")
     except AttributeError:
         return None
+
+
+def reduce_string(string):
+    normalized = string \
+        .lower() \
+        .replace('-', '') \
+        .replace(' ', '') \
+        .replace('.', '') \
+        .replace(',', '')
+    return normalized
