@@ -739,21 +739,12 @@ class AudiobookAlbum(Agent.Album):
         """
             Adds authors to moods, except for cases in contibutors list.
         """
-        author_contributers_list = [
-            'contributor',
-            'translator',
-            'foreword',
-            'translated',
-        ]
+        contributor_regex = '.+?(?= -)'
         if not helper.metadata.moods or helper.force:
             helper.metadata.moods.clear()
             # Loop through authors to check if it has contributor wording
             for author in helper.author:
-                if not [
-                    contrib for contrib in author_contributers_list if (
-                        contrib in author['name'].lower()
-                    )
-                ]:
+                if not re.match(contributor_regex, author['name']):
                     helper.metadata.moods.add(author['name'].strip())
 
     def add_series_to_moods(self, helper):

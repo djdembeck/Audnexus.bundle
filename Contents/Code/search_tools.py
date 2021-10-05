@@ -192,6 +192,12 @@ class ArtistSearchTool:
 
         return final_url
 
+    def clear_contributor_text(self, string):
+        contributor_regex = '.+?(?= -)'
+        if re.match(contributor_regex, string):
+            return re.match(contributor_regex, string).group(0)
+        return string
+
     def parse_api_response(self, api_response):
         """
             Collects keys used for each item from API response, for Plex search results.
@@ -217,15 +223,31 @@ class ArtistSearchTool:
             If matched, author name is set to None to prevent
             it being used in search query.
         """
-        if ',' in self.media.artist:
-            split_authors = self.media.artist.split(',')
-            log.info(
-                'Merging multi-author "' +
-                self.media.artist +
-                '" into top-level author "' +
-                split_authors[0] + '"'
-            )
-            self.media.artist = split_authors[0]
+
+        author_array = self.media.artist.split(', ')
+        # Handle multi-artist
+        if len(author_array) > 1:
+            # Go through list of artists until we find a non contributor
+            for i, r in enumerate(author_array):
+                if self.clear_contributor_text(r):
+                    log.debug('Author #' + str(i+1) + ' is a contributor')
+                    continue
+                log.info(
+                    'Merging multi-author "' +
+                    self.media.artist +
+                    '" into top-level author "' +
+                    r + '"'
+                )
+                self.media.artist = r
+                return
+        else:
+            if self.clear_contributor_text(self.media.artist):
+                log.debug('Stripped contributor tag from author')
+                self.media.artist = self.clear_contributor_text(
+                    self.media.artist
+                )
+                log.debug(self.media.artist)
+
         strings_to_check = [
             "[Unknown Artist]"
         ]
