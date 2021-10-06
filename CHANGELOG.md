@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.1](https://github.com/djdembeck/Audnexus.bundle/compare/v0.2.0...v0.2.1) (2021-10-06)
+
+
+### Features
+
+* :art: improve handling of authors as contributors ([beb20f6](https://github.com/djdembeck/Audnexus.bundle/commit/beb20f66b7a474ad08aa0eab9bc8d8fb7f95af4e))
+* **album-update:** :sparkles: use subtitle in Plex title where available ([4ff1654](https://github.com/djdembeck/Audnexus.bundle/commit/4ff1654286998fa48ffa785a5f2829511a24dee2))
+* **search:** :sparkles: add asin search/extraction for authors and albums ([52062eb](https://github.com/djdembeck/Audnexus.bundle/commit/52062ebc2b389e68c75bc436b4f4193fbd480ecb))
+
+
+### Bug Fixes
+
+* **author-search:** :goal_net: handle unknown artist properly. fixes [#11](https://github.com/djdembeck/Audnexus.bundle/issues/11) ([499c753](https://github.com/djdembeck/Audnexus.bundle/commit/499c7534e185f95a77f2f7af522c35f8fc3dc952))
+
 ## [0.2.0](https://github.com/djdembeck/Audnexus.bundle/compare/v0.1.1...v0.2.0) (2021-10-04)
 
 
