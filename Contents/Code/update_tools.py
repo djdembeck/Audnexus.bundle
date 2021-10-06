@@ -51,7 +51,10 @@ class AlbumUpdateTool:
         if 'image' in response:
             self.thumb = response['image']
         if 'title' in response:
-            self.title = response['title']
+            if 'subtitle' in response:
+                self.title = response['title'] + ': ' + response['subtitle']
+            else:    
+                self.title = response['title']
 
     # Writes metadata information to log.
     def writeInfo(self):
