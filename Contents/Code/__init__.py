@@ -168,7 +168,12 @@ class AudiobookArtist(Agent.Artist):
         search_url = helper.build_url()
         request = str(HTTP.Request(search_url, timeout=15))
         response = json_decode(request)
-        results_list = helper.parse_api_response(response)
+        # When using asin match, put it into array
+        if isinstance(response, list):
+            arr_to_pass = response
+        else:
+            arr_to_pass = [response]
+        results_list = helper.parse_api_response(arr_to_pass)
         return results_list
 
     def process_results(self, helper, result):

@@ -7,6 +7,8 @@ import urllib
 # Setup logger
 log = Logging()
 
+asin_regex = '[0-9A-Z]{10}'
+
 
 class AlbumSearchTool:
     SEARCH_URL = 'https://api.audible.com/1.0/catalog/products'
@@ -25,6 +27,16 @@ class AlbumSearchTool:
         """
             Generates the URL string with search paramaters for API call.
         """
+        # If search is an ASIN, use that
+        match_asin = re.search(asin_regex, self.normalizedName)
+        if match_asin:
+            log.debug('Overriding album search with ASIN')
+            album_param = '&keywords=' + urllib.quote(match_asin.group(0))
+            final_url = (
+                self.SEARCH_URL + self.SEARCH_PARAMS + album_param
+            )
+            return final_url
+
         album_param = '&title=' + urllib.quote(self.normalizedName)
         # Fix match/manual search doesn't provide author
         if self.media.artist:
@@ -184,6 +196,16 @@ class ArtistSearchTool:
         """
             Generates the URL string with search paramaters for API call.
         """
+        # If search is an ASIN, use that
+        match_asin = re.search(asin_regex, self.media.artist)
+        if match_asin:
+            log.debug('Overriding author search with ASIN')
+            aritst_param = '' + urllib.quote(match_asin.group(0))
+            final_url = (
+                self.SEARCH_URL + '/' + aritst_param
+            )
+            return final_url
+
         artist_param = '?name=' + urllib.quote(self.media.artist)
 
         final_url = (
@@ -195,7 +217,7 @@ class ArtistSearchTool:
     def clear_contributor_text(self, string):
         contributor_regex = '.+?(?= -)'
         if re.match(contributor_regex, string):
-            return re.match(contributor_regex, string).group(0)
+            return re.match(contributor_regex, string)
         return string
 
     def parse_api_response(self, api_response):
@@ -229,7 +251,7 @@ class ArtistSearchTool:
         if len(author_array) > 1:
             # Go through list of artists until we find a non contributor
             for i, r in enumerate(author_array):
-                if self.clear_contributor_text(r):
+                if self.clear_contributor_text(r) != r:
                     log.debug('Author #' + str(i+1) + ' is a contributor')
                     continue
                 log.info(
@@ -241,12 +263,11 @@ class ArtistSearchTool:
                 self.media.artist = r
                 return
         else:
-            if self.clear_contributor_text(self.media.artist):
+            if self.clear_contributor_text(self.media.artist) != self.media.artist:
                 log.debug('Stripped contributor tag from author')
                 self.media.artist = self.clear_contributor_text(
                     self.media.artist
                 )
-                log.debug(self.media.artist)
 
         strings_to_check = [
             "[Unknown Artist]"
