@@ -64,6 +64,10 @@ class AudiobookArtist(Agent.Artist):
         # Validate author name
         search_helper.validate_author_name()
 
+        # Short circuit search if artist name is bad.
+        if not search_helper.media.artist:
+            return
+
         # Call search API
         result = self.call_search_api(search_helper)
 
