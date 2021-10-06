@@ -64,6 +64,10 @@ class AudiobookArtist(Agent.Artist):
         # Validate author name
         search_helper.validate_author_name()
 
+        # Short circuit search if artist name is bad.
+        if not search_helper.media.artist:
+            return
+
         # Call search API
         result = self.call_search_api(search_helper)
 
@@ -168,7 +172,12 @@ class AudiobookArtist(Agent.Artist):
         search_url = helper.build_url()
         request = str(HTTP.Request(search_url, timeout=15))
         response = json_decode(request)
-        results_list = helper.parse_api_response(response)
+        # When using asin match, put it into array
+        if isinstance(response, list):
+            arr_to_pass = response
+        else:
+            arr_to_pass = [response]
+        results_list = helper.parse_api_response(arr_to_pass)
         return results_list
 
     def process_results(self, helper, result):
@@ -232,10 +241,8 @@ class AudiobookArtist(Agent.Artist):
             scorebase3 = helper.media.artist
             scorebase4 = author
             author_score = Util.LevenshteinDistance(
-                scorebase3.lower()
-                .replace('-', '').replace(' ', '').replace('.', ''),
-                scorebase4.lower()
-                .replace('-', '').replace(' ', '').replace('.', '')
+                reduce_string(scorebase3),
+                reduce_string(scorebase4)
             )
             log.debug("Score deduction from author: " + str(author_score))
             return author_score
@@ -610,7 +617,8 @@ class AudiobookAlbum(Agent.Album):
         scorebase1 = helper.media.album
         scorebase2 = title.encode('utf-8')
         album_score = Util.LevenshteinDistance(
-            scorebase1, scorebase2
+            reduce_string(scorebase1),
+            reduce_string(scorebase2)
         )
         log.debug("Score deduction from album: " + str(album_score))
         return album_score
@@ -624,7 +632,8 @@ class AudiobookAlbum(Agent.Album):
             scorebase3 = helper.media.artist
             scorebase4 = author
             author_score = Util.LevenshteinDistance(
-                scorebase3, scorebase4
+                reduce_string(scorebase3),
+                reduce_string(scorebase4)
             )
             log.debug("Score deduction from author: " + str(author_score))
             return author_score
@@ -739,21 +748,12 @@ class AudiobookAlbum(Agent.Album):
         """
             Adds authors to moods, except for cases in contibutors list.
         """
-        author_contributers_list = [
-            'contributor',
-            'translator',
-            'foreword',
-            'translated',
-        ]
+        contributor_regex = '.+?(?= -)'
         if not helper.metadata.moods or helper.force:
             helper.metadata.moods.clear()
             # Loop through authors to check if it has contributor wording
             for author in helper.author:
-                if not [
-                    contrib for contrib in author_contributers_list if (
-                        contrib in author['name'].lower()
-                    )
-                ]:
+                if not re.match(contributor_regex, author['name']):
                     helper.metadata.moods.add(author['name'].strip())
 
     def add_series_to_moods(self, helper):
@@ -784,9 +784,20 @@ class AudiobookAlbum(Agent.Album):
     def makeProxyUrl(self, url, referer):
         return Prefs['imageproxyurl'] + ('?url=%s&referer=%s' % (url, referer))
 
+
 # Common helpers
 def json_decode(output):
     try:
         return json.loads(output, encoding="utf-8")
     except AttributeError:
         return None
+
+
+def reduce_string(string):
+    normalized = string \
+        .lower() \
+        .replace('-', '') \
+        .replace(' ', '') \
+        .replace('.', '') \
+        .replace(',', '')
+    return normalized
