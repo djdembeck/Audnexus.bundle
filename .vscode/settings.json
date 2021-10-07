@@ -1,8 +1,8 @@
 {
     "conventionalCommits.scopes": [
-        "search",
-        "update",
+        "album-search",
+        "album-update",
         "author-search",
-        "album-update"
+        "author-update"
     ]
 }
