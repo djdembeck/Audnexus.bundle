@@ -94,16 +94,26 @@ Just like adding a new library, upgrading one can take some time to switch all y
 
 ## 🎈 Usage <a name="usage"></a>
 
-Data that the agent brings to your library:
+### Manually fixing matches
+There are a few tricks to know about using fix match for books and authors:
+- You may use the ASIN (Audible ID) in the name field, and it will override any other search paramaters.
+- Some authors do not have an Audible profile. These will not have an Audnexus DB entry.
+- You may need to modify author names in search to find them (for example, removing a middle initial). This is a search limitation we are looking to improve.
+- Book results come back in the format of: `"TITLE" by AUTHOR_FIRSTINITIAL.AUTHOR_LASTNAME w/ NARRATOR_FIRSTINITIAL.NARRATOR_LASTNAME`
+- Year field cannot be used by music agents (what we use), so it's an irrelevant parameter.
+- Scores are based on the following criteria: Book title ([Lvenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance)), Author(s) name ([Lvenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance)), language of book vs language of library (2 points), and 1 point deduction for each result (relevance score).
+- Identical results for book may appear. Typically the one with a score of `100` is the 'correct' one.
 
-### Authors (Artists)
+### Data that the agent brings to your library:
+
+#### Authors (Artists)
 - High resolution image.
 - Text description/bio.
 - Genres
 - Sorted by `Last Name, First Name`
 - Combines books with multiple author into the first author, reducing duplicate author entries/pages.
 
-### Books (Albums)
+#### Books (Albums)
 - High resolution cover (up to 3200x3200).
 - Rating (currently based on Audible user rating).
 - Release date.
