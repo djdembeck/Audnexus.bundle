@@ -1,6 +1,6 @@
 <p align="center">
   <a href="" rel="noopener">
- <img width=200px height=200px src="../assets/logos/logo-horizontal.png?raw=true" alt="Project logo"></a>
+ <img width=200px height=200px src="../assets/logos/logo.png?raw=true" alt="Project logo"></a>
 </p>
 
 <h3 align="center">Audnexus.bundle</h3>
