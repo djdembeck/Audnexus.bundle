@@ -3,6 +3,7 @@
         "album-search",
         "album-update",
         "author-search",
-        "author-update"
+        "author-update",
+        "settings"
     ]
 }
