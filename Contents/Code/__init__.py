@@ -551,6 +551,9 @@ class AudiobookAlbum(Agent.Album):
 
     def score_result(self, f, helper, i, info, year):
         asin = f['asin']
+        authors_concat = ', '.join(
+            author['name'] for author in f['author']
+        )
         author = f['author'][0]['name']
         date = f['date']
         language = f['language'].title()
@@ -565,7 +568,7 @@ class AudiobookAlbum(Agent.Album):
         if title_score:
             all_scores.append(title_score)
         # Author name score
-        author_score = self.score_author(helper, author)
+        author_score = self.score_author(helper, authors_concat)
         if author_score:
             all_scores.append(author_score)
         # Library language score
