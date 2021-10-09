@@ -152,17 +152,6 @@ class AudiobookArtist(Agent.Artist):
             .strip()
         )
 
-        # Setup logging of all data in the array
-        data_to_log = [
-            {'author': update_helper.name},
-            {'description': update_helper.description},
-            {'genres': ', '.join(
-                genre['name'] for genre in update_helper.genres
-            )},
-            {'thumb': update_helper.thumb},
-        ]
-        log.metadata(data_to_log, log_level="debug")
-
         self.compile_metadata(update_helper)
 
     def call_search_api(self, helper):
@@ -277,7 +266,7 @@ class AudiobookArtist(Agent.Artist):
                         None,
                         [
                             (split_author_surname.group(2) + ', ' +
-                            split_author_surname.group(1)),
+                                split_author_surname.group(1)),
                             split_author_surname.group(3)
                         ]
                     )
@@ -455,31 +444,6 @@ class AudiobookAlbum(Agent.Album):
             .replace("</p>", "\n")
             .strip()
         )
-
-        # Setup logging of all data in the array
-        list_of_tags = ''
-        if update_helper.genres:
-            list_of_tags = ', '.join(
-                (genre['name'] for genre in update_helper.genres)
-            )
-        data_to_log = [
-            {'author': ', '.join(
-                author['name'] for author in update_helper.author
-            )},
-            {'date': update_helper.date},
-            {'genres': list_of_tags},
-            {'narrator': ', '.join(
-                narrator['name'] for narrator in update_helper.narrator
-            )},
-            {'rating': update_helper.rating},
-            {'series': update_helper.series},
-            {'series2': update_helper.series2},
-            {'studio': update_helper.studio},
-            {'synopsis': update_helper.synopsis},
-            {'thumb': update_helper.thumb},
-            {'title': update_helper.title},
-        ]
-        log.metadata(data_to_log, log_level="debug")
 
         self.compile_metadata(update_helper)
 

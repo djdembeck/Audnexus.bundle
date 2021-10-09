@@ -58,16 +58,23 @@ class AlbumUpdateTool:
 
     # Writes metadata information to log.
     def writeInfo(self):
-        log.separator(msg='New data', log_level="info")
+        log.separator(
+            msg=(
+                'FINALIZED: ' + self.metadata.title +
+                ', ID: ' + self.metadata.id
+            ),
+            log_level="info"
+        )
 
         # Log basic metadata
         data_to_log = [
-            {'ID': self.metadata.id},
-            {'Title': self.metadata.title},
-            {'Release date': str(self.metadata.originally_available_at)},
-            {'Studio': self.metadata.studio},
-            {'Summary': self.metadata.summary},
-            {'Poster URL': self.thumb},
+            {'ASIN': self.metadata.id},
+            {'Album poster URL': self.thumb},
+            {'Album publisher': self.metadata.studio},
+            {'Album release date': str(self.metadata.originally_available_at)},
+            {'Album sort title': self.metadata.title_sort},
+            {'Album summary': self.metadata.summary},
+            {'Album title': self.metadata.title},
         ]
         log.metadata(data_to_log, log_level="info")
 
@@ -109,14 +116,21 @@ class ArtistUpdateTool:
 
     # Writes metadata information to log.
     def writeInfo(self):
-        log.separator(msg='New data', log_level="info")
+        log.separator(
+            msg=(
+                'FINALIZED: ' + self.metadata.title +
+                ', ID: ' + self.metadata.id
+            ),
+            log_level="info"
+        )
 
         # Log basic metadata
         data_to_log = [
-            {'ID': self.metadata.id},
-            {'Title': self.metadata.title},
-            {'Summary': self.metadata.summary},
-            {'Poster URL': self.thumb},
+            {'ASIN': self.metadata.id},
+            {'Author bio': self.metadata.summary},
+            {'Author name': self.metadata.title},
+            {'Author poster URL': self.thumb},
+            {'Author sort name': self.metadata.title_sort},
         ]
         log.metadata(data_to_log, log_level="info")
 
