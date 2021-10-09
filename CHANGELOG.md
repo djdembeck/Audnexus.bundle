@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.3](https://github.com/djdembeck/Audnexus.bundle/compare/v0.2.2...v0.2.3) (2021-10-09)
+
+
+### Features
+
+* **settings:** :triangular_flag_on_post: new toggles: store author as mood tag and sort author by last name ([aee2d26](https://github.com/djdembeck/Audnexus.bundle/commit/aee2d26a7231019368a52a779d91c6bcbb2383eb))
+
+
+### Bug Fixes
+
+* **author-update:** :bug: single name authors would have sort applied erroneously ([80e2554](https://github.com/djdembeck/Audnexus.bundle/commit/80e25540da47846fd3ffc5fbed13e49480ece1ac))
+
 ### [0.2.2](https://github.com/djdembeck/Audnexus.bundle/compare/v0.2.1...v0.2.2) (2021-10-08)
 
 

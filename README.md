@@ -31,35 +31,40 @@
 
 ## 🧐 About <a name = "about"></a>
 
-The aim of this project is to automate as much as possible, and make some intelligent, transparent choices for the user. All data used by this plugin is sourced from the parent aggregator, [audnex.us](https://github.com/djdembeck/audnexus).
+The aim of this project is to automate as much as possible, and make some intelligent, transparent choices for the user. All data used by this plugin is sourced from the parent aggregator, [audnex.us](https://github.com/djdembeck/audnexus). By using the audnexus API, searches and matches, which are cached, are greatly accelerated over scraping each search and item page from HTML. Additionally, the API can have multiple sources of data used for each book entry.
 
-Files are expected/tested with common audiobook [file structure](https://support.plex.tv/articles/200265296-adding-music-media-from-folders/) and tags, specifically from either [Bragi Books](https://github.com/djdembeck/bragibooks) or [Seanap's guide](https://github.com/seanap/Plex-Audiobook-Guide). Specifically, you are expected to have the following structure: `Author Name/Book Name/Book Name: Subtitle.m4b`
+Audnexus will first search a book/author to see if it's come across it before. If it's found, it returns them straight away. If not, it requests that the aggregator import all the available data. Thus, the more people who use audnexus' client plugins, the faster the API will be and more data complete. You can also run a fork of the API yourself, see the above repo on how to do that.
 
 ## 🏁 Getting Started <a name = "getting_started"></a>
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See [deployment](#deployment) for notes on how to deploy the project on a live system.
+Getting the agent up and running is a very smooth process, whether this is your first foray into audiobooks or you are migrating a library from another audiobooks agent. We look forward to getting you high quality data!
+
+NOTE: Data is currently only available for the US region.
 
 ### Prerequisites
 
 - Plex Media Server `v1.24.4.5081` or greater.
 - `git` installed on system, as this is the preferred method of installing/updating the agent. You can also extract the zip instead.
+- Files are expected to be in/tested with common audiobook [file structure](https://support.plex.tv/articles/200265296-adding-music-media-from-folders/) and tags, specifically from either [Bragi Books](https://github.com/djdembeck/bragibooks) or [Seanap's guide](https://github.com/seanap/Plex-Audiobook-Guide). In particular, you are expected to have the following structure: `Author Name/Book Name/Book Name: Subtitle.m4b` with `album` and `albumartist` tags. This is imperative for proper matching!
 
 ### Installing
 
-A step by step series of examples that tell you how to get a development env running.
+If you are new to getting plugins on your system or do not have access to `git`, go through this Plex documentation: [How do I manually install a plugin?
+](https://support.plex.tv/articles/201187656-how-do-i-manually-install-a-plugin/) If you are already familiar with the plugins system, and have `git`, follow the below steps.
 
-First, clone (or unzip) this project into your Plex `Plug-ins` directory:
+1. Clone (or unzip) this project into your Plex `Plug-ins` directory:
 
 ```
 git clone https://github.com/djdembeck/Audnexus.bundle.git
 ```
-For future updates, run the below commmand from within `Audnexus.bundle`
+
+2. Restart your Plex Media Server.
+
+For future updates, run the below commmand from within the `Audnexus.bundle` folder.
 
 ```
 git pull
 ```
-
-Next, restart your Plex Media Server.
 
 ## 🔧 Configuing the agent <a name = "config"></a>
 
@@ -91,16 +96,26 @@ Just like adding a new library, upgrading one can take some time to switch all y
 
 ## 🎈 Usage <a name="usage"></a>
 
-Data that the agent brings to your library:
+### Manually fixing matches
+There are a few tricks to know about using fix match for books and authors:
+- You may use the ASIN (Audible ID) in the name field, and it will override any other search paramaters.
+- Some authors do not have an Audible profile. These will not have an Audnexus DB entry.
+- You may need to modify author names in search to find them (for example, removing a middle initial). This is a search limitation we are looking to improve.
+- Book results come back in the format of: `"TITLE" by AUTHOR_FIRSTINITIAL.AUTHOR_LASTNAME w/ NARRATOR_FIRSTINITIAL.NARRATOR_LASTNAME`
+- Year field cannot be used by music agents (what we use), so it's an irrelevant parameter.
+- Scores are based on the following criteria: Book title ([Lvenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance)), Author(s) name ([Lvenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance)), language of book vs language of library (2 points), and 1 point deduction for each result (relevance score).
+- Identical results for book may appear. Typically the one with a score of `100` is the 'correct' one.
 
-### Authors (Artists)
+### Data that the agent brings to your library:
+
+#### Authors (Artists)
 - High resolution image.
 - Text description/bio.
 - Genres
 - Sorted by `Last Name, First Name`
 - Combines books with multiple author into the first author, reducing duplicate author entries/pages.
 
-### Books (Albums)
+#### Books (Albums)
 - High resolution cover (up to 3200x3200).
 - Rating (currently based on Audible user rating).
 - Release date.

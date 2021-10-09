@@ -1,8 +1,18 @@
 [{
-	"id": "no_overwrite_genre",
-	"label": "Leave existing genres in place",
+	"id": "keep_existing_genres",
+	"label": "Keep existing genres in place",
 	"type": "bool",
 	"default": "false"
+},{
+	"id": "store_author_as_mood",
+	"label": "Append authors as Mood tags",
+	"type": "bool",
+	"default": "true"
+},{
+	"id": "sort_author_by_last_name",
+	"label": "Sort artist by name [Last, First]",
+	"type": "bool",
+	"default": "true"
 },{
 	"id": "logging_level",
 	"label": "Level of plugin logging: ",

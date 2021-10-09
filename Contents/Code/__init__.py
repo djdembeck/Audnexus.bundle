@@ -152,17 +152,6 @@ class AudiobookArtist(Agent.Artist):
             .strip()
         )
 
-        # Setup logging of all data in the array
-        data_to_log = [
-            {'author': update_helper.name},
-            {'description': update_helper.description},
-            {'genres': ', '.join(
-                genre['name'] for genre in update_helper.genres
-            )},
-            {'thumb': update_helper.thumb},
-        ]
-        log.metadata(data_to_log, log_level="debug")
-
         self.compile_metadata(update_helper)
 
     def call_search_api(self, helper):
@@ -267,20 +256,26 @@ class AudiobookArtist(Agent.Artist):
             helper.metadata.title = helper.name
         # Sort Title.
         if not helper.metadata.title_sort or helper.force:
-            split_author_surname = re.match(
-                '^(.+?).([^\s,]+)(,?.(?:[JS]r\.?|III?|IV))?$',
-                helper.name,
-            )
-            helper.metadata.title_sort = ', '.join(
-                filter(
-                    None,
-                    [
-                        (split_author_surname.group(2) + ', ' +
-                        split_author_surname.group(1)),
-                        split_author_surname.group(3)
-                    ]
+            if Prefs['sort_author_by_last_name'] and not (
+                # Handle single word names
+                re.match(r'\A[\w-]+\Z', helper.name)
+            ):
+                split_author_surname = re.match(
+                    '^(.+?).([^\s,]+)(,?.(?:[JS]r\.?|III?|IV))?$',
+                    helper.name,
                 )
-            )
+                helper.metadata.title_sort = ', '.join(
+                    filter(
+                        None,
+                        [
+                            (split_author_surname.group(2) + ', ' +
+                                split_author_surname.group(1)),
+                            split_author_surname.group(3)
+                        ]
+                    )
+                )
+            else:
+                helper.metadata.title_sort = helper.metadata.title
         # Thumb.
         if helper.thumb:
             if helper.thumb not in helper.metadata.posters or helper.force:
@@ -294,7 +289,7 @@ class AudiobookArtist(Agent.Artist):
         """
             Add genre(s) to Plex genres where available and depending on preference.
         """
-        if not Prefs['no_overwrite_genre'] and helper.genres:
+        if not Prefs['keep_existing_genres'] and helper.genres:
             if not helper.metadata.genres or helper.force:
                 helper.metadata.genres.clear()
                 for genre in helper.genres:
@@ -452,31 +447,6 @@ class AudiobookAlbum(Agent.Album):
             .replace("</p>", "\n")
             .strip()
         )
-
-        # Setup logging of all data in the array
-        list_of_tags = ''
-        if update_helper.genres:
-            list_of_tags = ', '.join(
-                (genre['name'] for genre in update_helper.genres)
-            )
-        data_to_log = [
-            {'author': ', '.join(
-                author['name'] for author in update_helper.author
-            )},
-            {'date': update_helper.date},
-            {'genres': list_of_tags},
-            {'narrator': ', '.join(
-                narrator['name'] for narrator in update_helper.narrator
-            )},
-            {'rating': update_helper.rating},
-            {'series': update_helper.series},
-            {'series2': update_helper.series2},
-            {'studio': update_helper.studio},
-            {'synopsis': update_helper.synopsis},
-            {'thumb': update_helper.thumb},
-            {'title': update_helper.title},
-        ]
-        log.metadata(data_to_log, log_level="debug")
 
         self.compile_metadata(update_helper)
 
@@ -691,7 +661,8 @@ class AudiobookAlbum(Agent.Album):
         # Narrators.
         self.add_narrators_to_styles(helper)
         # Authors.
-        self.add_authors_to_moods(helper)
+        if Prefs['store_author_as_mood']:
+            self.add_authors_to_moods(helper)
         # Series.
         self.add_series_to_moods(helper)
         # Title.
@@ -731,7 +702,7 @@ class AudiobookAlbum(Agent.Album):
         """
             Add genre(s) to Plex genres where available and depending on preference.
         """
-        if not Prefs['no_overwrite_genre'] and helper.genres:
+        if not Prefs['keep_existing_genres'] and helper.genres:
             if not helper.metadata.genres or helper.force:
                 helper.metadata.genres.clear()
                 for genre in helper.genres:
