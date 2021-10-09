@@ -256,7 +256,10 @@ class AudiobookArtist(Agent.Artist):
             helper.metadata.title = helper.name
         # Sort Title.
         if not helper.metadata.title_sort or helper.force:
-            if Prefs['sort_author_by_last_name']:
+            if Prefs['sort_author_by_last_name'] and not (
+                # Handle single word names
+                re.match(r'\A[\w-]+\Z', helper.name)
+            ):
                 split_author_surname = re.match(
                     '^(.+?).([^\s,]+)(,?.(?:[JS]r\.?|III?|IV))?$',
                     helper.name,
