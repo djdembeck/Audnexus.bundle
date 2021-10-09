@@ -49,20 +49,22 @@ NOTE: Data is currently only available for the US region.
 
 ### Installing
 
-A step by step series of examples that tell you how to get a development env running.
+If you are new to getting plugins on your system or do not have access to `git`, go through this Plex documentation: [How do I manually install a plugin?
+](https://support.plex.tv/articles/201187656-how-do-i-manually-install-a-plugin/) If you are already familiar with the plugins system, and have `git`, follow the below steps.
 
-First, clone (or unzip) this project into your Plex `Plug-ins` directory:
+1. Clone (or unzip) this project into your Plex `Plug-ins` directory:
 
 ```
 git clone https://github.com/djdembeck/Audnexus.bundle.git
 ```
-For future updates, run the below commmand from within `Audnexus.bundle`
+
+2. Restart your Plex Media Server.
+
+For future updates, run the below commmand from within the `Audnexus.bundle` folder.
 
 ```
 git pull
 ```
-
-Next, restart your Plex Media Server.
 
 ## 🔧 Configuing the agent <a name = "config"></a>
 
