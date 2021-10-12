@@ -267,6 +267,13 @@ class ArtistSearchTool:
             If matched, author name is set to None to prevent
             it being used in search query.
         """
+        # Sometimes artist isn't set but title is
+        if not self.media.artist:
+            if self.media.title:
+                self.media.artist = self.media.title
+            else:
+                log.error("No artist to validate")
+                return
 
         author_array = self.media.artist.split(', ')
         # Handle multi-artist
