@@ -4,11 +4,14 @@ import json
 import re
 # Import internal tools
 from logging import Logging
-from search_tools import AlbumSearchTool, ArtistSearchTool, ScoreTools
-from update_tools import AlbumUpdateTool, ArtistUpdateTool
+from search_tools import AlbumSearchTool, ArtistSearchTool, ScoreTool
+from update_tools import AlbumUpdateTool, ArtistUpdateTool, TagTool
 from _version import version
 
 VERSION_NO = version
+
+# Score required to short-circuit matching and stop searching.
+GOOD_SCORE = 98
 
 # Setup logger
 log = Logging()
@@ -58,6 +61,10 @@ class AudiobookArtist(Agent.Artist):
         # Short circuit search if artist name is bad.
         if not search_helper.media.artist:
             return
+
+        search_helper.media.artist = String.StripDiacritics(
+                search_helper.media.artist
+        )
 
         # Call search API
         result = self.call_search_api(search_helper)
@@ -166,7 +173,7 @@ class AudiobookArtist(Agent.Artist):
 
         log.separator(msg="Search results", log_level="info")
         for index, result_dict in enumerate(result):
-            score_helper = ScoreTools(
+            score_helper = ScoreTool(
                 helper,
                 index,
                 info,
@@ -196,8 +203,9 @@ class AudiobookArtist(Agent.Artist):
         # Description.
         if not helper.metadata.summary or helper.force:
             helper.metadata.summary = helper.description
+        tagger = TagTool(helper, Prefs, re)
         # Genres.
-        self.add_genres(helper)
+        tagger.add_genres()
         # Title.
         if not helper.metadata.title or helper.force:
             helper.metadata.title = helper.name
@@ -232,17 +240,6 @@ class AudiobookArtist(Agent.Artist):
 
         helper.writeInfo()
 
-    def add_genres(self, helper):
-        """
-            Add genre(s) to Plex genres where available and depending on preference.
-        """
-        if not Prefs['keep_existing_genres'] and helper.genres:
-            if not helper.metadata.genres or helper.force:
-                helper.metadata.genres.clear()
-                for genre in helper.genres:
-                    if genre['name']:
-                        helper.metadata.genres.add(genre['name'])
-
     def hasProxy(self):
         return Prefs['imageproxyurl'] is not None
 
@@ -273,7 +270,9 @@ class AudiobookAlbum(Agent.Album):
             return
 
         # Run helper before passing to AlbumSearchTool
-        normalizedName = self.normalize_name(search_helper.media.album)
+        normalizedName = String.StripDiacritics(
+            search_helper.media.album
+        )
         # Strip title of things like unabridged and spaces
         search_helper.strip_title(normalizedName)
         # # Validate author name
@@ -397,19 +396,6 @@ class AudiobookAlbum(Agent.Album):
 
         self.compile_metadata(update_helper)
 
-    """
-        Search functions that require PMS imports,
-        thus we cannot 'outsource' them to AlbumSearchTool
-        Sorted by position in the search process
-    """
-
-    def normalize_name(self, input_name):
-        # Normalize the name
-        normalizedName = String.StripDiacritics(
-            input_name
-        )
-        return normalizedName
-
     def call_search_api(self, helper):
         """
             Builds URL then calls API, returns the JSON to helper function.
@@ -435,7 +421,7 @@ class AudiobookAlbum(Agent.Album):
                 if helper.check_if_preorder(date):
                     continue
 
-            score_helper = ScoreTools(
+            score_helper = ScoreTool(
                 helper,
                 index,
                 info,
@@ -452,12 +438,6 @@ class AudiobookAlbum(Agent.Album):
 
         info = sorted(info, key=lambda inf: inf['score'], reverse=True)
         return info
-
-    """
-        Update functions that require PMS imports,
-        thus we cannot 'outsource' them to AlbumUpdateTool
-        Sorted by position in the update process
-    """
 
     def call_item_api(self, helper):
         """
@@ -476,15 +456,16 @@ class AudiobookAlbum(Agent.Album):
         if helper.date is not None:
             if not helper.metadata.originally_available_at or helper.force:
                 helper.metadata.originally_available_at = helper.date
+        tagger = TagTool(helper, Prefs, re)
         # Genres.
-        self.add_genres(helper)
+        tagger.add_genres()
         # Narrators.
-        self.add_narrators_to_styles(helper)
+        tagger.add_narrators_to_styles()
         # Authors.
         if Prefs['store_author_as_mood']:
-            self.add_authors_to_moods(helper)
+            tagger.add_authors_to_moods()
         # Series.
-        self.add_series_to_moods(helper)
+        tagger.add_series_to_moods()
         # Title.
         if not helper.metadata.title or helper.force:
             helper.metadata.title = helper.title
@@ -517,52 +498,6 @@ class AudiobookAlbum(Agent.Album):
             helper.metadata.rating = float(helper.rating) * 2
 
         helper.writeInfo()
-
-    def add_genres(self, helper):
-        """
-            Add genre(s) to Plex genres where available and depending on preference.
-        """
-        if not Prefs['keep_existing_genres'] and helper.genres:
-            if not helper.metadata.genres or helper.force:
-                helper.metadata.genres.clear()
-                for genre in helper.genres:
-                    if genre['name']:
-                        helper.metadata.genres.add(genre['name'])
-
-    def add_narrators_to_styles(self, helper):
-        """
-            Adds narrators to styles.
-        """
-        if not helper.metadata.styles or helper.force:
-            helper.metadata.styles.clear()
-            for narrator in helper.narrator:
-                helper.metadata.styles.add(narrator['name'].strip())
-
-    def add_authors_to_moods(self, helper):
-        """
-            Adds authors to moods, except for cases in contibutors list.
-        """
-        contributor_regex = '.+?(?= -)'
-        if not helper.metadata.moods or helper.force:
-            helper.metadata.moods.clear()
-            # Loop through authors to check if it has contributor wording
-            for author in helper.author:
-                if not re.match(contributor_regex, author['name']):
-                    helper.metadata.moods.add(author['name'].strip())
-
-    def add_series_to_moods(self, helper):
-        """
-            Adds book series' to moods, since collections are not supported
-        """
-        if helper.series:
-            helper.metadata.moods.add("Series: " + helper.series)
-        if helper.series2:
-            helper.metadata.moods.add("Series: " + helper.series2)
-
-    """
-        General helper/repeated use functions
-        Sorted alphabetically
-    """
 
     def getDateFromString(self, string):
         try:

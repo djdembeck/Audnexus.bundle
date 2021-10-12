@@ -304,11 +304,9 @@ class ArtistSearchTool:
                 break
 
 
-class ScoreTools:
+class ScoreTool:
     # Starting value for score before deductions are taken.
     INITIAL_SCORE = 100
-    # Score required to short-circuit matching and stop searching.
-    GOOD_SCORE = 98
     # Any score lower than this will be ignored.
     IGNORE_SCORE = 45
 
