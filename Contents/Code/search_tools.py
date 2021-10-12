@@ -70,6 +70,28 @@ class AlbumSearchTool:
         log.warn('No Match: %s', url)
         return None
 
+    def name_to_initials(self, input_name):
+        # Shorten input_name by splitting on whitespaces
+        # Only the surname stays as whole, the rest gets truncated
+        # and merged with dots.
+        # Example: 'Arthur Conan Doyle' -> 'A.C.Doyle'
+        name_parts = input_name.split()
+        new_name = ""
+
+        # Check if prename and surname exist, otherwise exit
+        if len(name_parts) < 2:
+            return input_name
+
+        # traverse through prenames
+        for i in range(len(name_parts)-1):
+            s = name_parts[i]
+            # If prename already is an initial take it as is
+            new_name += (s[0] + '.') if len(s)>2 and s[1]!='.' else s
+        # Add surname
+        new_name += name_parts[-1]
+
+        return new_name
+
     def parse_api_response(self, api_response):
         """
             Collects keys used for each item from API response, for Plex search results.
@@ -280,3 +302,173 @@ class ArtistSearchTool:
                     "not using it in search."
                 )
                 break
+
+
+class ScoreTools:
+    # Starting value for score before deductions are taken.
+    INITIAL_SCORE = 100
+    # Score required to short-circuit matching and stop searching.
+    GOOD_SCORE = 98
+    # Any score lower than this will be ignored.
+    IGNORE_SCORE = 45
+
+    def __init__(
+        self,
+        helper,
+        index,
+        info,
+        locale,
+        levenshtein_distance,
+        result_dict,
+        year=None
+    ):
+        self.calculate_score = levenshtein_distance
+        self.helper = helper
+        self.index = index
+        self.info = info
+        self.english_locale = locale
+        self.result_dict = result_dict
+        self.year = year
+
+    def reduce_string(self, string):
+        normalized = string \
+            .lower() \
+            .replace('-', '') \
+            .replace(' ', '') \
+            .replace('.', '') \
+            .replace(',', '')
+        return normalized
+
+    def run_score_author(self):
+        self.asin = self.result_dict['asin']
+        self.author = self.result_dict['name']
+        self.authors_concat = self.author
+        self.date = None
+        self.language = None
+        self.narrator = None
+        self.title = None
+        return self.score_result()
+
+    def run_score_book(self):
+        self.asin = self.result_dict['asin']
+        self.authors_concat = ', '.join(
+            author['name'] for author in self.result_dict['author']
+        )
+        self.author = self.result_dict['author'][0]['name']
+        self.date = self.result_dict['date']
+        self.language = self.result_dict['language'].title()
+        self.narrator = self.result_dict['narrator'][0]['name']
+        self.title = self.result_dict['title']
+        return self.score_result()
+
+    def score_result(self):
+        # Array to hold score points for processing
+        all_scores = []
+
+        # Album name score
+        if self.title:
+            title_score = self.score_album(self.title)
+            if title_score:
+                all_scores.append(title_score)
+        # Author name score
+        if self.authors_concat:
+            author_score = self.score_author(self.authors_concat)
+            if author_score:
+                all_scores.append(author_score)
+        # Library language score
+        if self.language:
+            lang_score = self.score_language(self.language)
+            if lang_score:
+                all_scores.append(lang_score)
+
+        # Because builtin sum() isn't available
+        sum_scores=lambda numberlist:reduce(lambda x,y:x+y,numberlist,0)
+        # Subtract difference from initial score
+        # Subtract index to use Audible relevance as weight
+        score = self.INITIAL_SCORE - sum_scores(all_scores) - self.index
+
+        log.info("Result #" + str(self.index + 1))
+        # Log basic metadata
+        data_to_log = []
+        plex_score_dict = {}
+        if self.asin:
+            plex_score_dict['id'] = self.asin
+            data_to_log.append({'ASIN is': self.asin})
+        if self.author:
+            plex_score_dict['author'] = self.author
+            data_to_log.append({'Author is': self.author})
+        if self.date:
+            plex_score_dict['date'] = self.date
+            data_to_log.append({'Date is': self.date})
+        if self.narrator:
+            plex_score_dict['narrator'] = self.narrator
+            data_to_log.append({'Narrator is': self.narrator})
+        if score:
+            plex_score_dict['score'] = score
+            data_to_log.append({'Score is': str(score)})
+        if self.title:
+            plex_score_dict['title'] = self.title
+            data_to_log.append({'Title is': self.title})
+        if self.year:
+            plex_score_dict['year'] = self.year
+
+        log.metadata(data_to_log, log_level="info")
+
+        if score >= self.IGNORE_SCORE:
+            self.info.append(plex_score_dict)
+        else:
+            log.info(
+                '# Score is below ignore boundary (%s)... Skipping!',
+                self.IGNORE_SCORE
+            )
+
+    def score_album(self, title):
+        """
+            Compare the input album similarity to the search result album.
+            Score is calculated with LevenshteinDistance
+        """
+        scorebase1 = self.helper.media.album
+        scorebase2 = title.encode('utf-8')
+        album_score = self.calculate_score(
+            self.reduce_string(scorebase1),
+            self.reduce_string(scorebase2)
+        )
+        log.debug("Score deduction from album: " + str(album_score))
+        return album_score
+
+    def score_author(self, author):
+        """
+            Compare the input author similarity to the search result author.
+            Score is calculated with LevenshteinDistance
+        """
+        if self.helper.media.artist:
+            scorebase3 = self.helper.media.artist
+            scorebase4 = author
+            author_score = self.calculate_score(
+                self.reduce_string(scorebase3),
+                self.reduce_string(scorebase4)
+            )
+            log.debug("Score deduction from author: " + str(author_score))
+            return author_score
+
+    def score_language(self, language):
+        """
+            Compare the library language to search results
+            and knock off 2 points if they don't match.
+        """
+        lang_dict = {
+            self.english_locale: 'English',
+            'de': 'Deutsch',
+            'fr': 'Français',
+            'it': 'Italiano'
+        }
+
+        if language != lang_dict[self.helper.lang]:
+            log.debug(
+                'Audible language: %s; Library language: %s',
+                language,
+                lang_dict[self.helper.lang]
+            )
+            log.debug("Book is not library language, deduct 2 points")
+            return 2
+        return 0
