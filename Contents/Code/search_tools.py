@@ -94,7 +94,8 @@ class AlbumSearchTool:
 
     def parse_api_response(self, api_response):
         """
-            Collects keys used for each item from API response, for Plex search results.
+            Collects keys used for each item from API response,
+            for Plex search results.
         """
         search_results = []
         for item in api_response['products']:
@@ -244,7 +245,8 @@ class ArtistSearchTool:
 
     def parse_api_response(self, api_response):
         """
-            Collects keys used for each item from API response, for Plex search results.
+            Collects keys used for each item from API response,
+            for Plex search results.
         """
         search_results = []
         for item in api_response:
@@ -292,7 +294,11 @@ class ArtistSearchTool:
                 self.media.artist = r
                 return
         else:
-            if self.clear_contributor_text(self.media.artist) != self.media.artist:
+            if (
+                self.clear_contributor_text(self.media.artist)
+                !=
+                self.media.artist
+            ):
                 log.debug('Stripped contributor tag from author')
                 self.media.artist = self.clear_contributor_text(
                     self.media.artist

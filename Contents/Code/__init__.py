@@ -195,7 +195,9 @@ class AudiobookArtist(Agent.Artist):
             Calls Audnexus API to get author details,
             then calls helper to parse those details.
         """
-        request = str(HTTP.Request(helper.UPDATE_URL + helper.metadata.id, timeout=15))
+        request = str(HTTP.Request(
+            helper.UPDATE_URL + helper.metadata.id, timeout=15
+        ))
         response = json_decode(request)
         helper.parse_api_response(response)
 
@@ -444,7 +446,9 @@ class AudiobookAlbum(Agent.Album):
             Calls Audnexus API to get book details,
             then calls helper to parse those details.
         """
-        request = str(HTTP.Request(helper.UPDATE_URL + helper.metadata.id, timeout=15))
+        request = str(HTTP.Request(
+            helper.UPDATE_URL + helper.metadata.id, timeout=15
+        ))
         response = json_decode(request)
         helper.parse_api_response(response)
 
