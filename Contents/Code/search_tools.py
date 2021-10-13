@@ -229,13 +229,42 @@ class ArtistSearchTool:
             )
             return final_url
 
-        artist_param = '?name=' + urllib.quote(self.media.artist)
+        modified_artist_name = self.cleanup_author_name(self.media.artist)
+        artist_param = '?name=' + urllib.quote(modified_artist_name)
 
         final_url = (
             self.SEARCH_URL + artist_param
         )
 
         return final_url
+
+    def cleanup_author_name(self, name):
+        log.debug('Artist name before cleanup: ' + name)
+        # Remove certain strings, such as titles
+        str_to_remove = [
+            'Dr.',
+            'EdD',
+            'Prof.',
+            'Professor',
+        ]
+        str_to_remove_regex = re.compile(
+            '|'.join(map(re.escape, str_to_remove))
+        )
+        name = str_to_remove_regex.sub('', name)
+        # Remove periods between double initials
+        initials_regex = "^((?:[A-Z]\.\s?)*[A-Z]\.(?!\S)).(\w+)"
+        initials_matched = re.search(initials_regex, name)
+        if initials_matched:
+            log.debug('Found initials to clean')
+            cleaned_initials = (
+                initials_matched.group(1)
+                .replace('.', '')
+                .replace(' ', '')
+            )
+            name = cleaned_initials + ' ' + initials_matched.group(2)
+
+        log.debug('Artist name after cleanup: ' + name)
+        return name
 
     def clear_contributor_text(self, string):
         contributor_regex = '.+?(?= -)'
