@@ -487,7 +487,7 @@ class ScoreTool:
             author_score = self.calculate_score(
                 self.reduce_string(scorebase3),
                 self.reduce_string(scorebase4)
-            )
+            ) * 10
             log.debug("Score deduction from author: " + str(author_score))
             return author_score
 
