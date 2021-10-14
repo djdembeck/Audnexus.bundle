@@ -258,8 +258,8 @@ class ArtistSearchTool:
             log.debug('Found initials to clean')
             cleaned_initials = (
                 initials_matched.group(1)
-                .replace('.', '')
                 .replace(' ', '')
+                .replace('.', ' ')
             )
             name = cleaned_initials + ' ' + initials_matched.group(2)
 
