@@ -533,18 +533,17 @@ def make_request(url):
     """
     sleep_time = 2
     num_retries = 4
-    for x in range(0, num_retries):  
+    for x in range(0, num_retries):
         try:
             make_request = HTTP.Request(url)
             str_error = None
         except Exception as str_error:
-            pass
+            log.error("Failed http request attempt #" + x + ": " + url)
+            log.error(str_error)
 
         if str_error:
             sleep(sleep_time)
-            sleep_time *= 2
+            sleep_time *= x
         else:
-            log.error("Couldn't complete http request: " + url + " after 4 tries:")
-            log.error(str_error)
             break
     return make_request
