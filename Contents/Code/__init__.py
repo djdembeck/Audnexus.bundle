@@ -3,10 +3,11 @@
 import json
 import re
 # Import internal tools
+from _version import version
 from logging import Logging
 from search_tools import AlbumSearchTool, ArtistSearchTool, ScoreTool
+from time import sleep
 from update_tools import AlbumUpdateTool, ArtistUpdateTool, TagTool
-from _version import version
 
 VERSION_NO = version
 
@@ -157,7 +158,7 @@ class AudiobookArtist(Agent.Artist):
             Builds URL then calls API, returns the JSON to helper function.
         """
         search_url = helper.build_url()
-        request = str(HTTP.Request(search_url, timeout=15))
+        request = str(make_request(search_url))
         response = json_decode(request)
         # When using asin match, put it into array
         if isinstance(response, list):
@@ -195,8 +196,8 @@ class AudiobookArtist(Agent.Artist):
             Calls Audnexus API to get author details,
             then calls helper to parse those details.
         """
-        request = str(HTTP.Request(
-            helper.UPDATE_URL + helper.metadata.id, timeout=15
+        request = str(make_request(
+            helper.UPDATE_URL + helper.metadata.id
         ))
         response = json_decode(request)
         helper.parse_api_response(response)
@@ -237,7 +238,7 @@ class AudiobookArtist(Agent.Artist):
         if helper.thumb:
             if helper.thumb not in helper.metadata.posters or helper.force:
                 helper.metadata.posters[helper.thumb] = Proxy.Media(
-                    HTTP.Request(helper.thumb, timeout=15), sort_order=0
+                    make_request(helper.thumb), sort_order=0
                 )
 
         helper.writeInfo()
@@ -403,7 +404,7 @@ class AudiobookAlbum(Agent.Album):
             Builds URL then calls API, returns the JSON to helper function.
         """
         search_url = helper.build_url()
-        request = str(HTTP.Request(search_url, timeout=15))
+        request = str(make_request(search_url))
         response = json_decode(request)
         results_list = helper.parse_api_response(response)
         return results_list
@@ -446,8 +447,8 @@ class AudiobookAlbum(Agent.Album):
             Calls Audnexus API to get book details,
             then calls helper to parse those details.
         """
-        request = str(HTTP.Request(
-            helper.UPDATE_URL + helper.metadata.id, timeout=15
+        request = str(make_request(
+            helper.UPDATE_URL + helper.metadata.id
         ))
         response = json_decode(request)
         helper.parse_api_response(response)
@@ -494,7 +495,7 @@ class AudiobookAlbum(Agent.Album):
         if helper.thumb:
             if helper.thumb not in helper.metadata.posters or helper.force:
                 helper.metadata.posters[helper.thumb] = Proxy.Media(
-                    HTTP.Request(helper.thumb, timeout=15), sort_order=0
+                    make_request(helper.thumb), sort_order=0
                 )
         # Rating.
         # We always want to refresh the rating
@@ -524,3 +525,26 @@ def json_decode(output):
         return json.loads(output, encoding="utf-8")
     except AttributeError:
         return None
+
+def make_request(url):
+    """
+        Makes and returns an HTTP request.
+        Retries 4 times, increasing  time between each retry.
+    """
+    sleep_time = 2
+    num_retries = 4
+    for x in range(0, num_retries):  
+        try:
+            make_request = HTTP.Request(url)
+            str_error = None
+        except Exception as str_error:
+            pass
+
+        if str_error:
+            sleep(sleep_time)
+            sleep_time *= 2
+        else:
+            log.error("Couldn't complete http request: " + url + " after 4 tries:")
+            log.error(str_error)
+            break
+    return make_request
