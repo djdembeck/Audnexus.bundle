@@ -141,3 +141,51 @@ class ArtistUpdateTool:
         log.metadata_arrs(multi_arr, log_level="info")
 
         log.separator(log_level="info")
+
+
+class TagTool:
+    def __init__(self, helper, Prefs, re):
+        self.helper = helper
+        self.prefs = Prefs
+        self.re = re
+
+    def add_genres(self):
+        """
+            Add genre(s) to Plex where available and depending on preference.
+        """
+        if not self.prefs['keep_existing_genres'] and self.helper.genres:
+            if not self.helper.metadata.genres or self.helper.force:
+                self.helper.metadata.genres.clear()
+                for genre in self.helper.genres:
+                    if genre['name']:
+                        self.helper.metadata.genres.add(genre['name'])
+
+    def add_narrators_to_styles(self):
+        """
+            Adds narrators to styles.
+        """
+        if not self.helper.metadata.styles or self.helper.force:
+            self.helper.metadata.styles.clear()
+            for narrator in self.helper.narrator:
+                self.helper.metadata.styles.add(narrator['name'].strip())
+
+    def add_authors_to_moods(self):
+        """
+            Adds authors to moods, except for cases in contibutors list.
+        """
+        contributor_regex = '.+?(?= -)'
+        if not self.helper.metadata.moods or self.helper.force:
+            self.helper.metadata.moods.clear()
+            # Loop through authors to check if it has contributor wording
+            for author in self.helper.author:
+                if not self.re.match(contributor_regex, author['name']):
+                    self.helper.metadata.moods.add(author['name'].strip())
+
+    def add_series_to_moods(self):
+        """
+            Adds book series' to moods, since collections are not supported
+        """
+        if self.helper.series:
+            self.helper.metadata.moods.add("Series: " + self.helper.series)
+        if self.helper.series2:
+            self.helper.metadata.moods.add("Series: " + self.helper.series2)

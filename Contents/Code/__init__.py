@@ -3,21 +3,16 @@
 import json
 import re
 # Import internal tools
-from logging import Logging
-from search_tools import AlbumSearchTool, ArtistSearchTool
-from update_tools import AlbumUpdateTool, ArtistUpdateTool
 from _version import version
+from logging import Logging
+from search_tools import AlbumSearchTool, ArtistSearchTool, ScoreTool
+from time import sleep
+from update_tools import AlbumUpdateTool, ArtistUpdateTool, TagTool
 
 VERSION_NO = version
 
-# Starting value for score before deductions are taken.
-INITIAL_SCORE = 100
 # Score required to short-circuit matching and stop searching.
 GOOD_SCORE = 98
-# Any score lower than this will be ignored.
-IGNORE_SCORE = 45
-
-THREAD_MAX = 20
 
 # Setup logger
 log = Logging()
@@ -68,6 +63,10 @@ class AudiobookArtist(Agent.Artist):
         if not search_helper.media.artist:
             return
 
+        search_helper.media.artist = String.StripDiacritics(
+                search_helper.media.artist
+        )
+
         # Call search API
         result = self.call_search_api(search_helper)
 
@@ -90,7 +89,7 @@ class AudiobookArtist(Agent.Artist):
         log.separator(log_level="debug")
         log.debug('Final result:')
         for i, r in enumerate(info):
-            description = r['artist']
+            description = r['author']
 
             results.Append(
                 MetadataSearchResult(
@@ -159,7 +158,7 @@ class AudiobookArtist(Agent.Artist):
             Builds URL then calls API, returns the JSON to helper function.
         """
         search_url = helper.build_url()
-        request = str(HTTP.Request(search_url, timeout=15))
+        request = str(make_request(search_url))
         response = json_decode(request)
         # When using asin match, put it into array
         if isinstance(response, list):
@@ -174,74 +173,32 @@ class AudiobookArtist(Agent.Artist):
         info = []
 
         log.separator(msg="Search results", log_level="info")
-        for i, f in enumerate(result):
-            self.score_result(f, helper, i, info)
+        for index, result_dict in enumerate(result):
+            score_helper = ScoreTool(
+                helper,
+                index,
+                info,
+                Locale.Language.English,
+                Util.LevenshteinDistance,
+                result_dict,
+            )
+            score_helper.run_score_author()
 
             # Print separators for easy reading
-            if i <= len(result):
+            if index <= len(result):
                 log.separator(log_level="info")
 
         info = sorted(info, key=lambda inf: inf['score'], reverse=True)
         return info
-
-    def score_result(self, f, helper, i, info):
-        asin = f['asin']
-        author = f['name']
-
-        # Array to hold score points for processing
-        all_scores = []
-
-        # Author name score
-        author_score = self.score_author(helper, author)
-        if author_score:
-            all_scores.append(author_score)
-
-        score = INITIAL_SCORE - author_score
-
-        log.info("Result #" + str(i + 1))
-        # Log basic metadata
-        data_to_log = [
-            {'ID is': asin},
-            {'Author is': author},
-            {'Score is': str(score)},
-        ]
-        log.metadata(data_to_log, log_level="info")
-
-        if score >= IGNORE_SCORE:
-            info.append(
-                {
-                    'id': asin,
-                    'score': score,
-                    'artist': author,
-                }
-            )
-        else:
-            log.info(
-                '# Score is below ignore boundary (%s)... Skipping!',
-                IGNORE_SCORE
-            )
-
-    def score_author(self, helper, author):
-        """
-            Compare the input author similarity to the search result author.
-            Score is calculated with LevenshteinDistance
-        """
-        if helper.media.artist:
-            scorebase3 = helper.media.artist
-            scorebase4 = author
-            author_score = Util.LevenshteinDistance(
-                reduce_string(scorebase3),
-                reduce_string(scorebase4)
-            )
-            log.debug("Score deduction from author: " + str(author_score))
-            return author_score
 
     def call_item_api(self, helper):
         """
             Calls Audnexus API to get author details,
             then calls helper to parse those details.
         """
-        request = str(HTTP.Request(helper.UPDATE_URL + helper.metadata.id, timeout=15))
+        request = str(make_request(
+            helper.UPDATE_URL + helper.metadata.id
+        ))
         response = json_decode(request)
         helper.parse_api_response(response)
 
@@ -249,8 +206,9 @@ class AudiobookArtist(Agent.Artist):
         # Description.
         if not helper.metadata.summary or helper.force:
             helper.metadata.summary = helper.description
+        tagger = TagTool(helper, Prefs, re)
         # Genres.
-        self.add_genres(helper)
+        tagger.add_genres()
         # Title.
         if not helper.metadata.title or helper.force:
             helper.metadata.title = helper.name
@@ -280,21 +238,10 @@ class AudiobookArtist(Agent.Artist):
         if helper.thumb:
             if helper.thumb not in helper.metadata.posters or helper.force:
                 helper.metadata.posters[helper.thumb] = Proxy.Media(
-                    HTTP.Request(helper.thumb, timeout=15), sort_order=0
+                    make_request(helper.thumb), sort_order=0
                 )
 
         helper.writeInfo()
-
-    def add_genres(self, helper):
-        """
-            Add genre(s) to Plex genres where available and depending on preference.
-        """
-        if not Prefs['keep_existing_genres'] and helper.genres:
-            if not helper.metadata.genres or helper.force:
-                helper.metadata.genres.clear()
-                for genre in helper.genres:
-                    if genre['name']:
-                        helper.metadata.genres.add(genre['name'])
 
     def hasProxy(self):
         return Prefs['imageproxyurl'] is not None
@@ -326,7 +273,9 @@ class AudiobookAlbum(Agent.Album):
             return
 
         # Run helper before passing to AlbumSearchTool
-        normalizedName = self.normalize_name(search_helper.media.album)
+        normalizedName = String.StripDiacritics(
+            search_helper.media.album
+        )
         # Strip title of things like unabridged and spaces
         search_helper.strip_title(normalizedName)
         # # Validate author name
@@ -376,9 +325,9 @@ class AudiobookAlbum(Agent.Album):
                 r['title']) > 36 else r['title']
 
             # Shorten artist
-            artist_initials = self.name_to_initials(r['artist'])
+            artist_initials = search_helper.name_to_initials(r['author'])
             # Shorten narrator
-            narrator_initials = self.name_to_initials(r['narrator'])
+            narrator_initials = search_helper.name_to_initials(r['narrator'])
 
             description = '\"%s\" %s %s %s %s' % (
                 title_trunc,
@@ -450,47 +399,12 @@ class AudiobookAlbum(Agent.Album):
 
         self.compile_metadata(update_helper)
 
-    """
-        Search functions that require PMS imports,
-        thus we cannot 'outsource' them to AlbumSearchTool
-        Sorted by position in the search process
-    """
-
-    def normalize_name(self, input_name):
-        # Normalize the name
-        normalizedName = String.StripDiacritics(
-            input_name
-        )
-        return normalizedName
-
-    def name_to_initials(self, input_name):
-        # Shorten input_name by splitting on whitespaces
-        # Only the surname stays as whole, the rest gets truncated
-        # and merged with dots.
-        # Example: 'Arthur Conan Doyle' -> 'A.C.Doyle'
-        name_parts = input_name.split()
-        new_name = ""
-
-        # Check if prename and surname exist, otherwise exit
-        if len(name_parts) < 2:
-            return input_name
-
-        # traverse through prenames
-        for i in range(len(name_parts)-1):
-            s = name_parts[i]
-            # If prename already is an initial take it as is
-            new_name += (s[0] + '.') if len(s)>2 and s[1]!='.' else s
-        # Add surname
-        new_name += name_parts[-1]
-
-        return new_name
-
     def call_search_api(self, helper):
         """
             Builds URL then calls API, returns the JSON to helper function.
         """
         search_url = helper.build_url()
-        request = str(HTTP.Request(search_url, timeout=15))
+        request = str(make_request(search_url))
         response = json_decode(request)
         results_list = helper.parse_api_response(response)
         return results_list
@@ -500,8 +414,8 @@ class AudiobookAlbum(Agent.Album):
         info = []
 
         log.separator(msg="Search results", log_level="info")
-        for i, f in enumerate(result):
-            date = self.getDateFromString(f['date'])
+        for index, result_dict in enumerate(result):
+            date = self.getDateFromString(result_dict['date'])
             year = ''
             if date is not None:
                 year = date.year
@@ -510,141 +424,32 @@ class AudiobookAlbum(Agent.Album):
                 if helper.check_if_preorder(date):
                     continue
 
-            self.score_result(f, helper, i, info, year)
+            score_helper = ScoreTool(
+                helper,
+                index,
+                info,
+                Locale.Language.English,
+                Util.LevenshteinDistance,
+                result_dict,
+                year
+            )
+            score_helper.run_score_book()
 
             # Print separators for easy reading
-            if i <= len(result):
+            if index <= len(result):
                 log.separator(log_level="info")
 
         info = sorted(info, key=lambda inf: inf['score'], reverse=True)
         return info
-
-    def score_result(self, f, helper, i, info, year):
-        asin = f['asin']
-        authors_concat = ', '.join(
-            author['name'] for author in f['author']
-        )
-        author = f['author'][0]['name']
-        date = f['date']
-        language = f['language'].title()
-        narrator = f['narrator'][0]['name']
-        title = f['title']
-
-        # Array to hold score points for processing
-        all_scores = []
-
-        # Album name score
-        title_score = self.score_album(helper, title)
-        if title_score:
-            all_scores.append(title_score)
-        # Author name score
-        author_score = self.score_author(helper, authors_concat)
-        if author_score:
-            all_scores.append(author_score)
-        # Library language score
-        lang_score = self.score_language(helper, language)
-        if lang_score:
-            all_scores.append(lang_score)
-
-        # Because builtin sum() isn't available
-        sum_scores=lambda numberlist:reduce(lambda x,y:x+y,numberlist,0)
-        # Subtract difference from initial score
-        # Subtract index to use Audible relevance as weight
-        score = INITIAL_SCORE - sum_scores(all_scores) - i
-
-        log.info("Result #" + str(i + 1))
-        # Log basic metadata
-        data_to_log = [
-            {'ID is': asin},
-            {'Title is': title},
-            {'Author is': author},
-            {'Narrator is': narrator},
-            {'Date is ': str(date)},
-            {'Score is': str(score)},
-        ]
-        log.metadata(data_to_log, log_level="info")
-
-        if score >= IGNORE_SCORE:
-            info.append(
-                {
-                    'id': asin,
-                    'title': title,
-                    'year': year,
-                    'date': date,
-                    'score': score,
-                    'artist': author,
-                    'narrator': narrator
-                }
-            )
-        else:
-            log.info(
-                '# Score is below ignore boundary (%s)... Skipping!',
-                IGNORE_SCORE
-            )
-
-    def score_album(self, helper, title):
-        """
-            Compare the input album similarity to the search result album.
-            Score is calculated with LevenshteinDistance
-        """
-        scorebase1 = helper.media.album
-        scorebase2 = title.encode('utf-8')
-        album_score = Util.LevenshteinDistance(
-            reduce_string(scorebase1),
-            reduce_string(scorebase2)
-        )
-        log.debug("Score deduction from album: " + str(album_score))
-        return album_score
-
-    def score_author(self, helper, author):
-        """
-            Compare the input author similarity to the search result author.
-            Score is calculated with LevenshteinDistance
-        """
-        if helper.media.artist:
-            scorebase3 = helper.media.artist
-            scorebase4 = author
-            author_score = Util.LevenshteinDistance(
-                reduce_string(scorebase3),
-                reduce_string(scorebase4)
-            )
-            log.debug("Score deduction from author: " + str(author_score))
-            return author_score
-
-    def score_language(self, helper, language):
-        """
-            Compare the library language to search results
-            and knock off 2 points if they don't match.
-        """
-        lang_dict = {
-            Locale.Language.English: 'English',
-            'de': 'Deutsch',
-            'fr': 'Français',
-            'it': 'Italiano'
-        }
-
-        if language != lang_dict[helper.lang]:
-            log.debug(
-                'Audible language: %s; Library language: %s',
-                language,
-                lang_dict[helper.lang]
-            )
-            log.debug("Book is not library language, deduct 2 points")
-            return 2
-        return 0
-
-    """
-        Update functions that require PMS imports,
-        thus we cannot 'outsource' them to AlbumUpdateTool
-        Sorted by position in the update process
-    """
 
     def call_item_api(self, helper):
         """
             Calls Audnexus API to get book details,
             then calls helper to parse those details.
         """
-        request = str(HTTP.Request(helper.UPDATE_URL + helper.metadata.id, timeout=15))
+        request = str(make_request(
+            helper.UPDATE_URL + helper.metadata.id
+        ))
         response = json_decode(request)
         helper.parse_api_response(response)
 
@@ -656,15 +461,16 @@ class AudiobookAlbum(Agent.Album):
         if helper.date is not None:
             if not helper.metadata.originally_available_at or helper.force:
                 helper.metadata.originally_available_at = helper.date
+        tagger = TagTool(helper, Prefs, re)
         # Genres.
-        self.add_genres(helper)
+        tagger.add_genres()
         # Narrators.
-        self.add_narrators_to_styles(helper)
+        tagger.add_narrators_to_styles()
         # Authors.
         if Prefs['store_author_as_mood']:
-            self.add_authors_to_moods(helper)
+            tagger.add_authors_to_moods()
         # Series.
-        self.add_series_to_moods(helper)
+        tagger.add_series_to_moods()
         # Title.
         if not helper.metadata.title or helper.force:
             helper.metadata.title = helper.title
@@ -689,7 +495,7 @@ class AudiobookAlbum(Agent.Album):
         if helper.thumb:
             if helper.thumb not in helper.metadata.posters or helper.force:
                 helper.metadata.posters[helper.thumb] = Proxy.Media(
-                    HTTP.Request(helper.thumb, timeout=15), sort_order=0
+                    make_request(helper.thumb), sort_order=0
                 )
         # Rating.
         # We always want to refresh the rating
@@ -697,52 +503,6 @@ class AudiobookAlbum(Agent.Album):
             helper.metadata.rating = float(helper.rating) * 2
 
         helper.writeInfo()
-
-    def add_genres(self, helper):
-        """
-            Add genre(s) to Plex genres where available and depending on preference.
-        """
-        if not Prefs['keep_existing_genres'] and helper.genres:
-            if not helper.metadata.genres or helper.force:
-                helper.metadata.genres.clear()
-                for genre in helper.genres:
-                    if genre['name']:
-                        helper.metadata.genres.add(genre['name'])
-
-    def add_narrators_to_styles(self, helper):
-        """
-            Adds narrators to styles.
-        """
-        if not helper.metadata.styles or helper.force:
-            helper.metadata.styles.clear()
-            for narrator in helper.narrator:
-                helper.metadata.styles.add(narrator['name'].strip())
-
-    def add_authors_to_moods(self, helper):
-        """
-            Adds authors to moods, except for cases in contibutors list.
-        """
-        contributor_regex = '.+?(?= -)'
-        if not helper.metadata.moods or helper.force:
-            helper.metadata.moods.clear()
-            # Loop through authors to check if it has contributor wording
-            for author in helper.author:
-                if not re.match(contributor_regex, author['name']):
-                    helper.metadata.moods.add(author['name'].strip())
-
-    def add_series_to_moods(self, helper):
-        """
-            Adds book series' to moods, since collections are not supported
-        """
-        if helper.series:
-            helper.metadata.moods.add("Series: " + helper.series)
-        if helper.series2:
-            helper.metadata.moods.add("Series: " + helper.series2)
-
-    """
-        General helper/repeated use functions
-        Sorted alphabetically
-    """
 
     def getDateFromString(self, string):
         try:
@@ -766,12 +526,24 @@ def json_decode(output):
     except AttributeError:
         return None
 
+def make_request(url):
+    """
+        Makes and returns an HTTP request.
+        Retries 4 times, increasing  time between each retry.
+    """
+    sleep_time = 2
+    num_retries = 4
+    for x in range(0, num_retries):
+        try:
+            make_request = HTTP.Request(url)
+            str_error = None
+        except Exception as str_error:
+            log.error("Failed http request attempt #" + x + ": " + url)
+            log.error(str_error)
 
-def reduce_string(string):
-    normalized = string \
-        .lower() \
-        .replace('-', '') \
-        .replace(' ', '') \
-        .replace('.', '') \
-        .replace(',', '')
-    return normalized
+        if str_error:
+            sleep(sleep_time)
+            sleep_time *= x
+        else:
+            break
+    return make_request
