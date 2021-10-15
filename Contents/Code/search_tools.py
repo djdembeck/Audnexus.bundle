@@ -75,7 +75,7 @@ class AlbumSearchTool:
         # Only the surname stays as whole, the rest gets truncated
         # and merged with dots.
         # Example: 'Arthur Conan Doyle' -> 'A.C.Doyle'
-        name_parts = input_name.split()
+        name_parts = clear_contributor_text(input_name).split()
         new_name = ""
 
         # Check if prename and surname exist, otherwise exit
@@ -83,10 +83,10 @@ class AlbumSearchTool:
             return input_name
 
         # traverse through prenames
-        for i in range(len(name_parts)-1):
-            s = name_parts[i]
+        for index, result in enumerate(name_parts):
+            s = result
             # If prename already is an initial take it as is
-            new_name += (s[0] + '.') if len(s)>2 and s[1]!='.' else s
+            new_name += (s[0] + '.') if len(s) > 2 and s[1] != '.' else s
         # Add surname
         new_name += name_parts[-1]
 
@@ -266,12 +266,6 @@ class ArtistSearchTool:
         log.debug('Artist name after cleanup: ' + name)
         return name
 
-    def clear_contributor_text(self, string):
-        contributor_regex = '.+?(?= -)'
-        if re.match(contributor_regex, string):
-            return re.match(contributor_regex, string).group(0)
-        return string
-
     def parse_api_response(self, api_response):
         """
             Collects keys used for each item from API response,
@@ -311,14 +305,14 @@ class ArtistSearchTool:
         if len(author_array) > 1:
             # Go through list of artists until we find a non contributor
             for i, r in enumerate(author_array):
-                if self.clear_contributor_text(r) != r:
+                if clear_contributor_text(r) != r:
                     log.debug('Author #' + str(i+1) + ' is a contributor')
                     # If all authors are contributors use the first
                     if i == len(author_array) - 1:
                         log.debug(
                             'All authors are contributors, using the first one'
                         )
-                        self.media.artist = self.clear_contributor_text(
+                        self.media.artist = clear_contributor_text(
                             author_array[0]
                         )
                         return
@@ -333,12 +327,12 @@ class ArtistSearchTool:
                 return
         else:
             if (
-                self.clear_contributor_text(self.media.artist)
+                clear_contributor_text(self.media.artist)
                 !=
                 self.media.artist
             ):
                 log.debug('Stripped contributor tag from author')
-                self.media.artist = self.clear_contributor_text(
+                self.media.artist = clear_contributor_text(
                     self.media.artist
                 )
 
@@ -521,3 +515,11 @@ class ScoreTool:
             log.debug("Book is not library language, deduct 2 points")
             return 2
         return 0
+
+
+# Shared functions
+def clear_contributor_text(string):
+    contributor_regex = '.+?(?= -)'
+    if re.match(contributor_regex, string):
+        return re.match(contributor_regex, string).group(0)
+    return string
