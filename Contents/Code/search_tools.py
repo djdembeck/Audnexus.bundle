@@ -269,7 +269,7 @@ class ArtistSearchTool:
     def clear_contributor_text(self, string):
         contributor_regex = '.+?(?= -)'
         if re.match(contributor_regex, string):
-            return re.match(contributor_regex, string)
+            return re.match(contributor_regex, string).group(0)
         return string
 
     def parse_api_response(self, api_response):
