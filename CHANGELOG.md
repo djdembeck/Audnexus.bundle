@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.4](https://github.com/djdembeck/Audnexus.bundle/compare/v0.2.3...v0.2.4) (2021-10-15)
+
+
+### Bug Fixes
+
+* :children_crossing: handle http errors and exponential backoff ([8964fe4](https://github.com/djdembeck/Audnexus.bundle/commit/8964fe4c2771b39db8a81369d148475eb6160529))
+* **author-search:** :ambulance: add greater weight to author name accuracy ([c7ba7b7](https://github.com/djdembeck/Audnexus.bundle/commit/c7ba7b76ebdb3e12b2ef1b50b1403c5369466fda))
+* **author-search:** :bug: contributor stripping wasn't working properly. Fixes [#23](https://github.com/djdembeck/Audnexus.bundle/issues/23) ([72f464e](https://github.com/djdembeck/Audnexus.bundle/commit/72f464e18fb91309f3de009854fba8a3f5d86004))
+* **author-search:** :bug: handle search failure when no artist tag is available but title is (manual search) ([f399442](https://github.com/djdembeck/Audnexus.bundle/commit/f39944288b803eeb08653cea883b9016019a6acd))
+* **author-search:** :children_crossing: do basic author name cleanup prior to running search, to improve search success ([5869c7e](https://github.com/djdembeck/Audnexus.bundle/commit/5869c7ed4390c45d722278c7ef212c2a84e1980f))
+* **author-search:** :children_crossing: if all authors are contributors use the first ([988ea27](https://github.com/djdembeck/Audnexus.bundle/commit/988ea276360a5a3378af83530a2f8850525a54cf))
+
 ### [0.2.3](https://github.com/djdembeck/Audnexus.bundle/compare/v0.2.2...v0.2.3) (2021-10-09)
 
 
