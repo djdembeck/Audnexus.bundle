@@ -313,6 +313,15 @@ class ArtistSearchTool:
             for i, r in enumerate(author_array):
                 if self.clear_contributor_text(r) != r:
                     log.debug('Author #' + str(i+1) + ' is a contributor')
+                    # If all authors are contributors use the first
+                    if i == len(author_array) - 1:
+                        log.debug(
+                            'All authors are contributors, using the first one'
+                        )
+                        self.media.artist = self.clear_contributor_text(
+                            author_array[0]
+                        )
+                        return
                     continue
                 log.info(
                     'Merging multi-author "' +
