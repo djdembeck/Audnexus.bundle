@@ -18,6 +18,7 @@ class AlbumUpdateTool:
         self.rating = None
         self.series = ''
         self.series2 = ''
+        self.subtitle = ''
         self.thumb = ''
         self.volume = ''
         self.volume2 = ''
@@ -50,11 +51,10 @@ class AlbumUpdateTool:
             self.synopsis = response['summary']
         if 'image' in response:
             self.thumb = response['image']
+        if 'subtitle' in response:
+            self.subtitle = response['subtitle']
         if 'title' in response:
-            if 'subtitle' in response:
-                self.title = response['title'] + ': ' + response['subtitle']
-            else:
-                self.title = response['title']
+            self.title = response['title']
 
     # Writes metadata information to log.
     def writeInfo(self):
