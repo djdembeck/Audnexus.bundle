@@ -526,6 +526,7 @@ def json_decode(output):
     except AttributeError:
         return None
 
+
 def make_request(url):
     """
         Makes and returns an HTTP request.

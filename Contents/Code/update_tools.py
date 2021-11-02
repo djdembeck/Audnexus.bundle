@@ -53,7 +53,7 @@ class AlbumUpdateTool:
         if 'title' in response:
             if 'subtitle' in response:
                 self.title = response['title'] + ': ' + response['subtitle']
-            else:    
+            else:
                 self.title = response['title']
 
     # Writes metadata information to log.
