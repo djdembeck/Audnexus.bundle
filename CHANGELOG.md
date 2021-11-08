@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.5](https://github.com/djdembeck/Audnexus.bundle/compare/v0.2.4...v0.2.5) (2021-11-08)
+
+
+### Bug Fixes
+
+* **album-update:** :recycle: Only include subtitle in sort if not in a series ([2022dbd](https://github.com/djdembeck/Audnexus.bundle/commit/2022dbd6ef7d3556c83644956023b9baf37ba7e9))
+
 ### [0.2.4](https://github.com/djdembeck/Audnexus.bundle/compare/v0.2.3...v0.2.4) (2021-10-15)
 
 

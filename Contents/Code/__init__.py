@@ -471,14 +471,22 @@ class AudiobookAlbum(Agent.Album):
             tagger.add_authors_to_moods()
         # Series.
         tagger.add_series_to_moods()
+        # Setup title + subtitle where available.
+        if helper.subtitle:
+            album_title = helper.title + ': ' + helper.subtitle
+        else:
+            album_title = helper.title
         # Title.
         if not helper.metadata.title or helper.force:
-            helper.metadata.title = helper.title
+            helper.metadata.title = album_title
         # Sort Title.
         # Add series/volume to sort title where possible.
         series_with_volume = ''
         if helper.series and helper.volume:
             series_with_volume = helper.series + ', ' + helper.volume
+        # Only include subtitle in sort if not in a series
+        if not helper.volume:
+            helper.title = album_title
         if not helper.metadata.title_sort or helper.force:
             helper.metadata.title_sort = ' - '.join(
                 filter(
@@ -525,6 +533,7 @@ def json_decode(output):
         return json.loads(output, encoding="utf-8")
     except AttributeError:
         return None
+
 
 def make_request(url):
     """
