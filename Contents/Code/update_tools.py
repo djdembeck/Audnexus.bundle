@@ -40,11 +40,15 @@ class AlbumUpdateTool:
         if 'seriesPrimary' in response:
             self.series = response['seriesPrimary']['name']
             if 'position' in response['seriesPrimary']:
-                self.volume = response['seriesPrimary']['position']
+                self.volume = self.volume_prefix(
+                    response['seriesPrimary']['position']
+                )
         if 'seriesSecondary' in response:
             self.series2 = response['seriesSecondary']['name']
             if 'position' in response['seriesSecondary']:
-                self.volume2 = response['seriesSecondary']['position']
+                self.volume2 = self.volume_prefix(
+                    response['seriesSecondary']['position']
+                )
         if 'publisherName' in response:
             self.studio = response['publisherName']
         if 'summary' in response:
@@ -55,6 +59,10 @@ class AlbumUpdateTool:
             self.subtitle = response['subtitle']
         if 'title' in response:
             self.title = response['title']
+
+    def volume_prefix(self, string):
+        prefixed_string = ('Book ' + string)
+        return prefixed_string
 
     # Writes metadata information to log.
     def writeInfo(self):
