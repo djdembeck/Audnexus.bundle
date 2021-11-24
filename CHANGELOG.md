@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.6](https://github.com/djdembeck/Audnexus.bundle/compare/v0.2.5...v0.2.6) (2021-11-24)
+
+
+### Bug Fixes
+
+* **album-update:** :recycle: add 'Book' prefix to series position due to upstream change ([bcb9a6a](https://github.com/djdembeck/Audnexus.bundle/commit/bcb9a6add4cc5eb85f0fd450263409f663626c82))
+
 ### [0.2.5](https://github.com/djdembeck/Audnexus.bundle/compare/v0.2.4...v0.2.5) (2021-11-08)
 
 

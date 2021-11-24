@@ -1,5 +1,6 @@
 # Import internal tools
 from logging import Logging
+import re
 
 # Setup logger
 log = Logging()
@@ -40,11 +41,15 @@ class AlbumUpdateTool:
         if 'seriesPrimary' in response:
             self.series = response['seriesPrimary']['name']
             if 'position' in response['seriesPrimary']:
-                self.volume = response['seriesPrimary']['position']
+                self.volume = self.volume_prefix(
+                    response['seriesPrimary']['position']
+                )
         if 'seriesSecondary' in response:
             self.series2 = response['seriesSecondary']['name']
             if 'position' in response['seriesSecondary']:
-                self.volume2 = response['seriesSecondary']['position']
+                self.volume2 = self.volume_prefix(
+                    response['seriesSecondary']['position']
+                )
         if 'publisherName' in response:
             self.studio = response['publisherName']
         if 'summary' in response:
@@ -55,6 +60,13 @@ class AlbumUpdateTool:
             self.subtitle = response['subtitle']
         if 'title' in response:
             self.title = response['title']
+
+    def volume_prefix(self, string):
+        book_regex = '(Book ?(\d*\.)?\d+[+-]?[\d]?)'
+        if not re.match(book_regex, string):
+            prefixed_string = ('Book ' + string)
+            return prefixed_string
+        return string
 
     # Writes metadata information to log.
     def writeInfo(self):
@@ -144,10 +156,9 @@ class ArtistUpdateTool:
 
 
 class TagTool:
-    def __init__(self, helper, Prefs, re):
+    def __init__(self, helper, Prefs):
         self.helper = helper
         self.prefs = Prefs
-        self.re = re
 
     def add_genres(self):
         """
@@ -178,7 +189,7 @@ class TagTool:
             self.helper.metadata.moods.clear()
             # Loop through authors to check if it has contributor wording
             for author in self.helper.author:
-                if not self.re.match(contributor_regex, author['name']):
+                if not re.match(contributor_regex, author['name']):
                     self.helper.metadata.moods.add(author['name'].strip())
 
     def add_series_to_moods(self):
