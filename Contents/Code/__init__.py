@@ -206,7 +206,7 @@ class AudiobookArtist(Agent.Artist):
         # Description.
         if not helper.metadata.summary or helper.force:
             helper.metadata.summary = helper.description
-        tagger = TagTool(helper, Prefs, re)
+        tagger = TagTool(helper, Prefs)
         # Genres.
         tagger.add_genres()
         # Title.
@@ -461,7 +461,7 @@ class AudiobookAlbum(Agent.Album):
         if helper.date is not None:
             if not helper.metadata.originally_available_at or helper.force:
                 helper.metadata.originally_available_at = helper.date
-        tagger = TagTool(helper, Prefs, re)
+        tagger = TagTool(helper, Prefs)
         # Genres.
         tagger.add_genres()
         # Narrators.
