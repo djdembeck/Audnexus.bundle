@@ -17,7 +17,7 @@
 
 ---
 
-<p align="center"> An <a href="https://github.com/djdembeck/audnexus">audnex.us</a> client, providing rich author and audiobook data to Plex via it's legacy plugin agent system.
+<p align="center"> An <a href="https://github.com/djdembeck/audnexus">audnex.us</a> client, providing rich author and audiobook data to Plex via its legacy plugin agent system.
     <br> 
 </p>
 
