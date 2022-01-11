@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.7](https://github.com/djdembeck/Audnexus.bundle/compare/v0.2.6...v0.2.7) (2022-01-11)
+
+
+### Bug Fixes
+
+* **album-search:** :zap: Multiply title score deduction by 2 to improve/fix [#9](https://github.com/djdembeck/Audnexus.bundle/issues/9) ([76502e9](https://github.com/djdembeck/Audnexus.bundle/commit/76502e9a50b6fb5453ad64389e4d27275916cc5c))
+
 ### [0.2.6](https://github.com/djdembeck/Audnexus.bundle/compare/v0.2.5...v0.2.6) (2021-11-24)
 
 
