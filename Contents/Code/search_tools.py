@@ -475,7 +475,7 @@ class ScoreTool:
         album_score = self.calculate_score(
             self.reduce_string(scorebase1),
             self.reduce_string(scorebase2)
-        )
+        ) * 2
         log.debug("Score deduction from album: " + str(album_score))
         return album_score
 
