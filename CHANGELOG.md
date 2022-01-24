@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.8](https://github.com/djdembeck/Audnexus.bundle/compare/v0.2.7...v0.2.8) (2022-01-24)
+
+
+### Bug Fixes
+
+* **album-search:** :bug: handle empty album/artist file metadata fields. fixes [#33](https://github.com/djdembeck/Audnexus.bundle/issues/33) ([dfba017](https://github.com/djdembeck/Audnexus.bundle/commit/dfba0179d5128b0064eeb52cc5021ec428cd13db))
+
 ### [0.2.7](https://github.com/djdembeck/Audnexus.bundle/compare/v0.2.6...v0.2.7) (2022-01-11)
 
 
