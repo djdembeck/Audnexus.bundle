@@ -471,6 +471,9 @@ class ScoreTool:
             Score is calculated with LevenshteinDistance
         """
         scorebase1 = self.helper.media.album
+        if not scorebase1:
+            log.error('No album title found in file metadata')
+            return 50
         scorebase2 = title.encode('utf-8')
         album_score = self.calculate_score(
             self.reduce_string(scorebase1),
@@ -486,6 +489,9 @@ class ScoreTool:
         """
         if self.helper.media.artist:
             scorebase3 = self.helper.media.artist
+            if not scorebase3:
+                log.warn('No artist found in file metadata')
+                return 20
             scorebase4 = author
             author_score = self.calculate_score(
                 self.reduce_string(scorebase3),
