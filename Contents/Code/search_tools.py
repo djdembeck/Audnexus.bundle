@@ -8,6 +8,8 @@ import urllib
 log = Logging()
 
 asin_regex = '[0-9A-Z]{10}'
+# asin preceded by '#' (url encoded)
+asin_path_regex = '%23([0-9A-Z]{10})[^\w]'
 
 
 class AlbumSearchTool:
@@ -166,17 +168,23 @@ class AlbumSearchTool:
             'normalizedName = %s', normalizedName
         )
 
-        # Chop off "unabridged"
-        normalizedName = re.sub(
-            r"[\(\[].*?[\)\]]", "", normalizedName
-        )
-        log.debug(
-            'chopping bracketed text = %s', normalizedName
-        )
-        normalizedName = normalizedName.strip()
-        log.debug(
-            'normalizedName stripped = %s', normalizedName
-        )
+        # Only use name if no ASIN is found in file path
+        match_asin = re.search(asin_path_regex, self.media.filename)
+        if (match_asin):
+            normalizedName = match_asin.group(1)
+            log.debug('detected ASIN in file path: %s', normalizedName)
+        else:
+            # Chop off "unabridged"
+            normalizedName = re.sub(
+                r"[\(\[].*?[\)\]]", "", normalizedName
+            )
+            log.debug(
+                'chopping bracketed text = %s', normalizedName
+            )
+            normalizedName = normalizedName.strip()
+            log.debug(
+                'normalizedName stripped = %s', normalizedName
+            )
 
         log.separator(
             msg=(
