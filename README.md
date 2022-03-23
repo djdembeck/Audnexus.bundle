@@ -45,7 +45,7 @@ NOTE: Data is currently only available for the US region.
 
 - Plex Media Server `v1.24.4.5081` or greater.
 - `git` installed on system, as this is the preferred method of installing/updating the agent. You can also extract the zip instead.
-- Files are expected to be in/tested with common audiobook [file structure](https://support.plex.tv/articles/200265296-adding-music-media-from-folders/) and tags, specifically from either [Bragi Books](https://github.com/djdembeck/bragibooks) or [Seanap's guide](https://github.com/seanap/Plex-Audiobook-Guide). In particular, you are expected to have the following structure: `Author Name/Book Name/Book Name: Subtitle.m4b` with `album` and `albumartist` tags. This is imperative for proper matching!
+- Files are expected to be in/tested with common audiobook [file structure](https://support.plex.tv/articles/200265296-adding-music-media-from-folders/) and tags, specifically from either [Bragi Books](https://github.com/djdembeck/bragibooks) or [Seanap's guide](https://github.com/seanap/Plex-Audiobook-Guide). In particular, you are expected to have the following structure: `Author Name/Book Name/Book Name: Subtitle.m4b` with `album` and `albumartist` tags. This is imperative for proper matching! You can also override the metadata search by including an Audible ASIN after a `#` in your path. For example: `Author Name/Book Name #B01234ABCD/Book Name: Subtitle.m4b`.
 
 ### Installing
 
