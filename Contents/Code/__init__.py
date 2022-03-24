@@ -249,6 +249,7 @@ class AudiobookArtist(Agent.Artist):
     def makeProxyUrl(self, url, referer):
         return Prefs['imageproxyurl'] + ('?url=%s&referer=%s' % (url, referer))
 
+
 class AudiobookAlbum(Agent.Album):
     name = 'Audnexus Agent'
     languages = [
@@ -311,7 +312,7 @@ class AudiobookAlbum(Agent.Album):
         local_separators = separator_dict[lang]
         log.debug(
             'Using localized separators "%s" and "%s"',
-            local_separators['T_A'], local_separators['A_N'] 
+            local_separators['T_A'], local_separators['A_N']
         )
 
         # Output the final results.
@@ -332,8 +333,8 @@ class AudiobookAlbum(Agent.Album):
             description = '\"%s\" %s %s %s %s' % (
                 title_trunc,
                 local_separators['T_A'],
-                artist_initials, 
-                local_separators['A_N'], 
+                artist_initials,
+                local_separators['A_N'],
                 narrator_initials
             )
             results.Append(

@@ -404,6 +404,12 @@ class ScoreTool:
         self.title = self.result_dict['title']
         return self.score_result()
 
+    def sum_scores(self, numberlist):
+        # Because builtin sum() isn't available
+        return reduce(
+            lambda x, y: x + y, numberlist, 0
+        )
+
     def score_result(self):
         # Array to hold score points for processing
         all_scores = []
@@ -424,11 +430,9 @@ class ScoreTool:
             if lang_score:
                 all_scores.append(lang_score)
 
-        # Because builtin sum() isn't available
-        sum_scores=lambda numberlist:reduce(lambda x,y:x+y,numberlist,0)
         # Subtract difference from initial score
         # Subtract index to use Audible relevance as weight
-        score = self.INITIAL_SCORE - sum_scores(all_scores) - self.index
+        score = self.INITIAL_SCORE - self.sum_scores(all_scores) - self.index
 
         log.info("Result #" + str(self.index + 1))
         # Log basic metadata
