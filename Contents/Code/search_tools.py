@@ -28,7 +28,7 @@ class AlbumSearchTool:
             Generates the URL string with search paramaters for API call.
         """
         # If search is an ASIN, use that
-        match_asin = re.search(asin_regex, self.normalizedName)
+        match_asin = search_asin(self.normalizedName)
         if match_asin:
             log.debug('Overriding album search with ASIN')
             album_param = '&keywords=' + urllib.quote(match_asin.group(0))
@@ -51,6 +51,17 @@ class AlbumSearchTool:
         )
 
         return final_url
+
+    def check_for_asin(self):
+        """
+            Checks filename and search query for ASIN to quick match.
+        """
+        filename_search_asin = search_asin(self.media.filename)
+        manual_search_asin = search_asin(self.media.album)
+        if filename_search_asin:
+            return filename_search_asin.group(0)
+        elif manual_search_asin:
+            return manual_search_asin.group(0)
 
     def check_if_preorder(self, book_date):
         current_date = (date.today())
@@ -220,7 +231,7 @@ class ArtistSearchTool:
             Generates the URL string with search paramaters for API call.
         """
         # If search is an ASIN, use that
-        match_asin = re.search(asin_regex, self.media.artist)
+        match_asin = search_asin(self.media.artist)
         if match_asin:
             log.debug('Overriding author search with ASIN')
             aritst_param = '' + urllib.quote(match_asin.group(0))
@@ -533,3 +544,8 @@ def clear_contributor_text(string):
     if re.match(contributor_regex, string):
         return re.match(contributor_regex, string).group(0)
     return string
+
+
+def search_asin(input):
+    if input:
+        return re.search(asin_regex, input)

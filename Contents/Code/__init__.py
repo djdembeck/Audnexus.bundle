@@ -277,6 +277,25 @@ class AudiobookAlbum(Agent.Album):
         normalizedName = String.StripDiacritics(
             search_helper.media.album
         )
+
+        # Check if we can quick match based on asin
+        quick_match_asin = search_helper.check_for_asin()
+        if quick_match_asin:
+            results.Append(
+                MetadataSearchResult(
+                    id=quick_match_asin,
+                    lang=lang,
+                    name=quick_match_asin,
+                    score=100,
+                    year=1969
+                )
+            )
+            log.info(
+                    'Using quick match based on asin: '
+                    '%s' % quick_match_asin
+                )
+            return
+
         # Strip title of things like unabridged and spaces
         search_helper.strip_title(normalizedName)
         # # Validate author name
