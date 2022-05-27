@@ -42,10 +42,7 @@ def Start():
 class AudiobookArtist(Agent.Artist):
     name = 'Audnexus Agent'
     languages = [
-        Locale.Language.English,
-        'de',
-        'fr',
-        'it'
+        Locale.Language.English
     ]
     primary_provider = True
     accepts_from = ['com.plexapp.agents.localmedia']
@@ -253,10 +250,7 @@ class AudiobookArtist(Agent.Artist):
 class AudiobookAlbum(Agent.Album):
     name = 'Audnexus Agent'
     languages = [
-        Locale.Language.English,
-        'de',
-        'fr',
-        'it'
+        Locale.Language.English
     ]
     primary_provider = True
     accepts_from = ['com.plexapp.agents.localmedia']
