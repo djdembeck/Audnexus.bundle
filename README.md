@@ -17,7 +17,7 @@
 
 ---
 
-<p align="center"> An <a href="https://github.com/djdembeck/audnexus">audnex.us</a> client, providing rich author and audiobook data to Plex via it's legacy plugin agent system.
+<p align="center"> An <a href="https://github.com/djdembeck/audnexus">audnex.us</a> client, providing rich author and audiobook data to Plex via its legacy plugin agent system.
     <br> 
 </p>
 
@@ -27,7 +27,7 @@
 - [Getting Started](#getting_started)
 - [Configuring](#config)
 - [Usage](#usage)
-- [Contributing](../CONTRIBUTING.md)
+- [Contributing](CONTRIBUTING.md)
 
 ## 🧐 About <a name = "about"></a>
 
@@ -66,7 +66,7 @@ For future updates, run the below commmand from within the `Audnexus.bundle` fol
 git pull
 ```
 
-## 🔧 Configuing the agent <a name = "config"></a>
+## 🔧 Configuring the agent <a name = "config"></a>
 
 If you wish to use local tags/images, you can follow the directions [here](https://github.com/seanap/Plex-Audiobook-Guide#configure-metadata-agent-in-plex), but this agent assumes you will not.
 
@@ -106,7 +106,7 @@ There are a few tricks to know about using fix match for books and authors:
 - You may need to modify author names in search to find them (for example, removing a middle initial). This is a search limitation we are looking to improve.
 - Book results come back in the format of: `"TITLE" by AUTHOR_FIRSTINITIAL.AUTHOR_LASTNAME w/ NARRATOR_FIRSTINITIAL.NARRATOR_LASTNAME`
 - Year field cannot be used by music agents (what we use), so it's an irrelevant parameter.
-- Scores are based on the following criteria: Book title ([Lvenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance)), Author(s) name ([Lvenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance)), language of book vs language of library (2 points), and 1 point deduction for each result (relevance score).
+- Scores are based on the following criteria: Book title ([Levenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance)), Author(s) name ([Levenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance)), language of book vs language of library (2 points), and 1 point deduction for each result (relevance score).
 - Identical results for book may appear. Typically the one with a score of `100` is the 'correct' one.
 
 ### Data that the agent brings to your library:
@@ -116,7 +116,7 @@ There are a few tricks to know about using fix match for books and authors:
 - Text description/bio.
 - Genres
 - Sorted by `Last Name, First Name`
-- Combines books with multiple author into the first author, reducing duplicate author entries/pages.
+- Combines books with multiple authors into the first author, reducing duplicate author entries/pages.
 
 #### Books (Albums)
 - High resolution cover (up to 3200x3200).
