@@ -70,6 +70,9 @@ git pull
 
 If you wish to use local tags/images, you can follow the directions [here](https://github.com/seanap/Plex-Audiobook-Guide#configure-metadata-agent-in-plex), but this agent assumes you will not.
 
+### Using quick match
+You may use the Audible ASIN in both filename and in manual search. Doing so will automatically use the ASIN provided without searching the database. For example: `Author Name/Book Name B01234ABCD/Book Name: Subtitle.m4b`.
+
 ### Create an audiobook library
 
 - From within Plex Web, create a new library, with the MUSIC type, and name it Audiobooks.
@@ -98,7 +101,7 @@ Just like adding a new library, upgrading one can take some time to switch all y
 
 ### Manually fixing matches
 There are a few tricks to know about using fix match for books and authors:
-- You may use the ASIN (Audible ID) in the name field, and it will override any other search paramaters.
+- You may use [Quick Match](#using-quick-match) if you already know the ASIN.
 - Some authors do not have an Audible profile. These will not have an Audnexus DB entry.
 - You may need to modify author names in search to find them (for example, removing a middle initial). This is a search limitation we are looking to improve.
 - Book results come back in the format of: `"TITLE" by AUTHOR_FIRSTINITIAL.AUTHOR_LASTNAME w/ NARRATOR_FIRSTINITIAL.NARRATOR_LASTNAME`
