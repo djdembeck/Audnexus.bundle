@@ -7,7 +7,7 @@ import urllib
 # Setup logger
 log = Logging()
 
-asin_regex = '[0-9A-Z]{10}'
+asin_regex = '(?=.\\d)[A-Z\\d]{10}'
 
 
 class AlbumSearchTool:
