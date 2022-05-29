@@ -42,10 +42,7 @@ def Start():
 class AudiobookArtist(Agent.Artist):
     name = 'Audnexus Agent'
     languages = [
-        Locale.Language.English,
-        'de',
-        'fr',
-        'it'
+        Locale.Language.English
     ]
     primary_provider = True
     accepts_from = ['com.plexapp.agents.localmedia']
@@ -249,13 +246,11 @@ class AudiobookArtist(Agent.Artist):
     def makeProxyUrl(self, url, referer):
         return Prefs['imageproxyurl'] + ('?url=%s&referer=%s' % (url, referer))
 
+
 class AudiobookAlbum(Agent.Album):
     name = 'Audnexus Agent'
     languages = [
-        Locale.Language.English,
-        'de',
-        'fr',
-        'it'
+        Locale.Language.English
     ]
     primary_provider = True
     accepts_from = ['com.plexapp.agents.localmedia']
@@ -276,6 +271,25 @@ class AudiobookAlbum(Agent.Album):
         normalizedName = String.StripDiacritics(
             search_helper.media.album
         )
+
+        # Check if we can quick match based on asin
+        quick_match_asin = search_helper.check_for_asin()
+        if quick_match_asin:
+            results.Append(
+                MetadataSearchResult(
+                    id=quick_match_asin,
+                    lang=lang,
+                    name=quick_match_asin,
+                    score=100,
+                    year=1969
+                )
+            )
+            log.info(
+                    'Using quick match based on asin: '
+                    '%s' % quick_match_asin
+                )
+            return
+
         # Strip title of things like unabridged and spaces
         search_helper.strip_title(normalizedName)
         # # Validate author name
@@ -311,7 +325,7 @@ class AudiobookAlbum(Agent.Album):
         local_separators = separator_dict[lang]
         log.debug(
             'Using localized separators "%s" and "%s"',
-            local_separators['T_A'], local_separators['A_N'] 
+            local_separators['T_A'], local_separators['A_N']
         )
 
         # Output the final results.
@@ -332,8 +346,8 @@ class AudiobookAlbum(Agent.Album):
             description = '\"%s\" %s %s %s %s' % (
                 title_trunc,
                 local_separators['T_A'],
-                artist_initials, 
-                local_separators['A_N'], 
+                artist_initials,
+                local_separators['A_N'],
                 narrator_initials
             )
             results.Append(

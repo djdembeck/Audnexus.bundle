@@ -7,7 +7,7 @@ import urllib
 # Setup logger
 log = Logging()
 
-asin_regex = '[0-9A-Z]{10}'
+asin_regex = '(?=.\\d)[A-Z\\d]{10}'
 
 
 class AlbumSearchTool:
@@ -28,7 +28,7 @@ class AlbumSearchTool:
             Generates the URL string with search paramaters for API call.
         """
         # If search is an ASIN, use that
-        match_asin = re.search(asin_regex, self.normalizedName)
+        match_asin = search_asin(self.normalizedName)
         if match_asin:
             log.debug('Overriding album search with ASIN')
             album_param = '&keywords=' + urllib.quote(match_asin.group(0))
@@ -51,6 +51,17 @@ class AlbumSearchTool:
         )
 
         return final_url
+
+    def check_for_asin(self):
+        """
+            Checks filename and search query for ASIN to quick match.
+        """
+        filename_search_asin = search_asin(self.media.filename)
+        manual_search_asin = search_asin(self.media.album)
+        if filename_search_asin:
+            return filename_search_asin.group(0)
+        elif manual_search_asin:
+            return manual_search_asin.group(0)
 
     def check_if_preorder(self, book_date):
         current_date = (date.today())
@@ -220,7 +231,7 @@ class ArtistSearchTool:
             Generates the URL string with search paramaters for API call.
         """
         # If search is an ASIN, use that
-        match_asin = re.search(asin_regex, self.media.artist)
+        match_asin = search_asin(self.media.artist)
         if match_asin:
             log.debug('Overriding author search with ASIN')
             aritst_param = '' + urllib.quote(match_asin.group(0))
@@ -404,6 +415,12 @@ class ScoreTool:
         self.title = self.result_dict['title']
         return self.score_result()
 
+    def sum_scores(self, numberlist):
+        # Because builtin sum() isn't available
+        return reduce(
+            lambda x, y: x + y, numberlist, 0
+        )
+
     def score_result(self):
         # Array to hold score points for processing
         all_scores = []
@@ -424,11 +441,9 @@ class ScoreTool:
             if lang_score:
                 all_scores.append(lang_score)
 
-        # Because builtin sum() isn't available
-        sum_scores=lambda numberlist:reduce(lambda x,y:x+y,numberlist,0)
         # Subtract difference from initial score
         # Subtract index to use Audible relevance as weight
-        score = self.INITIAL_SCORE - sum_scores(all_scores) - self.index
+        score = self.INITIAL_SCORE - self.sum_scores(all_scores) - self.index
 
         log.info("Result #" + str(self.index + 1))
         # Log basic metadata
@@ -529,3 +544,8 @@ def clear_contributor_text(string):
     if re.match(contributor_regex, string):
         return re.match(contributor_regex, string).group(0)
     return string
+
+
+def search_asin(input):
+    if input:
+        return re.search(asin_regex, input)
