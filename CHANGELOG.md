@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.3.0](https://github.com/djdembeck/Audnexus.bundle/compare/v0.2.8...v0.3.0) (2022-05-29)
+
+
+### Features
+
+* **album-search:** :sparkles: add quick match using asin ([3cca5b6](https://github.com/djdembeck/Audnexus.bundle/commit/3cca5b65ff9bd0e45194c38c1d38b760a70ab845))
+
 ### [0.2.8](https://github.com/djdembeck/Audnexus.bundle/compare/v0.2.7...v0.2.8) (2022-01-24)
 
 
