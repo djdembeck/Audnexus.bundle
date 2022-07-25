@@ -489,23 +489,11 @@ class AudiobookAlbum(Agent.Album):
         # If the `simplify_title` option is selected, don't append subtitle
         # and remove extra endings on the title
         if Prefs['simplify_title']:
-            # If the title ends with a series part, remove it
-            # works for "Book 1" and "Book One"
-            album_title = re.sub(
-                r", book [\w\s-]+\s*$", "", helper.title, flags=re.IGNORECASE)
-            # If the title ends with "unabridged"/"abridged", with or without parenthesis
-            # remove them; case insensitive
-            album_title = re.sub(r" *\(?(un)?abridged\)?$", "",
-                                 album_title, flags=re.IGNORECASE)
-
-            album_title = album_title.strip()
-
-        # If not simplifying title, setup title + subtitle where available.
+            album_title = helper.simplify_title()
+        elif helper.subtitle:
+            album_title = helper.title + ': ' + helper.subtitle
         else:
-            if helper.subtitle:
-                album_title = helper.title + ': ' + helper.subtitle
-            else:
-                album_title = helper.title
+            album_title = helper.title
         # Title.
         if not helper.metadata.title or helper.force:
             helper.metadata.title = album_title
