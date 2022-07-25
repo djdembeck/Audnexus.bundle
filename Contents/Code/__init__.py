@@ -61,7 +61,7 @@ class AudiobookArtist(Agent.Artist):
             return
 
         search_helper.media.artist = String.StripDiacritics(
-            search_helper.media.artist
+                search_helper.media.artist
         )
 
         # Call search API
@@ -285,9 +285,9 @@ class AudiobookAlbum(Agent.Album):
                 )
             )
             log.info(
-                'Using quick match based on asin: '
-                '%s' % quick_match_asin
-            )
+                    'Using quick match based on asin: '
+                    '%s' % quick_match_asin
+                )
             return
 
         # Strip title of things like unabridged and spaces
