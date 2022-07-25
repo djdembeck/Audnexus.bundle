@@ -14,6 +14,11 @@
 	"type": "bool",
 	"default": "true"
 },{
+	"id": "simplify_title",
+	"label": "Simplify the books' titles",
+	"type": "bool",
+	"default": "false"
+},{
 	"id": "logging_level",
 	"label": "Level of plugin logging: ",
 	"type": "enum",
