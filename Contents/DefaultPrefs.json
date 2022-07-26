@@ -15,7 +15,7 @@
 	"default": "true"
 },{
 	"id": "simplify_title",
-	"label": "Simplify the books' titles",
+	"label": "Simplify book titles (remove subtitle, series part, (un)abridged, etc.)",
 	"type": "bool",
 	"default": "false"
 },{
