@@ -485,8 +485,12 @@ class AudiobookAlbum(Agent.Album):
             tagger.add_authors_to_moods()
         # Series.
         tagger.add_series_to_moods()
-        # Setup title + subtitle where available.
-        if helper.subtitle:
+
+        # If the `simplify_title` option is selected, don't append subtitle
+        # and remove extra endings on the title
+        if Prefs['simplify_title']:
+            album_title = helper.simplify_title()
+        elif helper.subtitle:
             album_title = helper.title + ': ' + helper.subtitle
         else:
             album_title = helper.title
