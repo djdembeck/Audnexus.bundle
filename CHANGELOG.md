@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.4.0](https://github.com/djdembeck/Audnexus.bundle/compare/v0.3.0...v0.4.0) (2022-08-09)
+
+
+### Features
+
+* Add a `simplify_title` option to the preferences ([#56](https://github.com/djdembeck/Audnexus.bundle/issues/56)) ([2b2a82a](https://github.com/djdembeck/Audnexus.bundle/commit/2b2a82af070a08c32d413fe5fe3cdaac2a68e066))
+
 ## [0.3.0](https://github.com/djdembeck/Audnexus.bundle/compare/v0.2.8...v0.3.0) (2022-05-29)
 
 
