@@ -100,6 +100,21 @@ class AlbumUpdateTool:
 
         log.separator(log_level="info")
 
+    # Remove extra description text from the title
+    def simplify_title(self):
+        # If the title ends with a series part, remove it
+        # works for "Book 1" and "Book One"
+        album_title = re.sub(
+            r", book [\w\s-]+\s*$", "", self.title, flags=re.IGNORECASE)
+        # If the title ends with "unabridged"/"abridged", with or without parenthesis
+        # remove them; case insensitive
+        album_title = re.sub(r" *\(?(un)?abridged\)?$", "",
+                                album_title, flags=re.IGNORECASE)
+        # Trim any leading/trailing spaces just in case
+        album_title = album_title.strip()
+
+        return album_title
+
 
 class ArtistUpdateTool:
     UPDATE_URL = 'https://api.audnex.us/authors/'
