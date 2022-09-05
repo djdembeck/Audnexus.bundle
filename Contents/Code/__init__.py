@@ -523,6 +523,8 @@ class AudiobookAlbum(Agent.Album):
                 helper.metadata.posters[helper.thumb] = Proxy.Media(
                     make_request(helper.thumb), sort_order=0
                 )
+                # Re-prioritize the poster to the first position
+                helper.metadata.posters.validate_keys([helper.thumb])
         # Rating.
         # We always want to refresh the rating
         if helper.rating:
