@@ -272,6 +272,13 @@ class AudiobookAlbum(Agent.Album):
             search_helper.media.album
         )
 
+        #workaround for default search not getting results using Plex "Match" menu
+        #search_helper.media.album was "none", but search_helper.media.title was accurate
+        if not normalizedName or normalizedName == "None":
+            normalizedName = String.StripDiacritics(
+                search_helper.media.title
+            )
+
         # Check if we can quick match based on asin
         quick_match_asin = search_helper.check_for_asin()
         if quick_match_asin:
