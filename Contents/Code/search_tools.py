@@ -82,26 +82,26 @@ class AlbumSearchTool:
         return None
 
     def name_to_initials(self, input_name):
-        # Shorten input_name by splitting on whitespaces
-        # Only the surname stays as whole, the rest gets truncated
-        # and merged with dots.
-        # Example: 'Arthur Conan Doyle' -> 'A.C.Doyle'
+        """
+        Shorten input_name by truncating prenames
+        
+        Examples:
+            'Arthur Conan Doyle' -> 'A.C.Doyle'
+            'J.K. Rowling'       -> 'J.K.Rowling'
+            'J. R. R. Tolkien'   -> 'J.R.R.Tolkien'
+        """
         name_parts = clear_contributor_text(input_name).split()
-        new_name = ""
 
-        # Check if prename and surname exist, otherwise exit
+        # Check if prename AND surname exist, otherwise exit
         if len(name_parts) < 2:
             return input_name
 
-        # traverse through prenames
-        for index, result in enumerate(name_parts):
-            s = result
-            # If prename already is an initial take it as is
-            new_name += (s[0] + '.') if len(s) > 2 and s[1] != '.' else s
+        # Build list of prename initials
+        initials = [f"{s[0]}." if s[1] != "." else s for s in name_parts[:-1]]
         # Add surname
-        new_name += name_parts[-1]
+        new_name = initials + [name_parts[-1]]
 
-        return new_name
+        return "".join(new_name)
 
     def parse_api_response(self, api_response):
         """
