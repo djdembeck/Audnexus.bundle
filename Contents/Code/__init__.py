@@ -272,8 +272,7 @@ class AudiobookAlbum(Agent.Album):
             search_helper.media.album
         )
 
-        #workaround for default search not getting results using Plex "Match" menu
-        #search_helper.media.album was "none", but search_helper.media.title was accurate
+        # Fallback to title if album is empty or literal "None"
         if not normalizedName or normalizedName == "None":
             normalizedName = String.StripDiacritics(
                 search_helper.media.title
