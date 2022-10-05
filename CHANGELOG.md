@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.4.1](https://github.com/djdembeck/Audnexus.bundle/compare/v0.4.0...v0.4.1) (2022-10-05)
+
+
+### Bug Fixes
+
+* **album-search:** `name_to_initials` could have extra characters ([d345713](https://github.com/djdembeck/Audnexus.bundle/commit/d345713063a4ddb6110faf74b931627cbd34132d))
+* **album-search:** fallback to `media.title` when `media.album` is None ([b993083](https://github.com/djdembeck/Audnexus.bundle/commit/b993083613835278c887cc8e946c8575cc9b3042))
+* **album-search:** improve `name_to_initials` ([1b52c19](https://github.com/djdembeck/Audnexus.bundle/commit/1b52c199c4f57baf065abcb3ed865338b34efce0))
+* **album-update:** :bug: make sure to reset poster if it changes ([bdb92b0](https://github.com/djdembeck/Audnexus.bundle/commit/bdb92b0a8fbca894a86ab67d830bebbabf811be9))
+
 ## [0.4.0](https://github.com/djdembeck/Audnexus.bundle/compare/v0.3.0...v0.4.0) (2022-08-09)
 
 
