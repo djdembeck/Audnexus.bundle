@@ -87,17 +87,15 @@ class AlbumSearchTool:
         # and merged with dots.
         # Example: 'Arthur Conan Doyle' -> 'A.C.Doyle'
         name_parts = clear_contributor_text(input_name).split()
-        new_name = ""
 
         # Check if prename and surname exist, otherwise exit
         if len(name_parts) < 2:
             return input_name
 
-        # traverse through prenames
-        for index, result in enumerate(name_parts):
-            s = result
-            # If prename already is an initial take it as is
-            new_name += (s[0] + '.') if len(s) > 2 and s[1] != '.' else s
+        new_name = ""
+        # Truncate prenames
+        for part in name_parts[:-1]:
+            new_name += part[0] + "." if part[1] != "." else part
         # Add surname
         new_name += name_parts[-1]
 

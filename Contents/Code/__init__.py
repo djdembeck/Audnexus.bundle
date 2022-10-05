@@ -272,6 +272,12 @@ class AudiobookAlbum(Agent.Album):
             search_helper.media.album
         )
 
+        # Fallback to title if album is empty or literal "None"
+        if not normalizedName or normalizedName == "None":
+            normalizedName = String.StripDiacritics(
+                search_helper.media.title
+            )
+
         # Check if we can quick match based on asin
         quick_match_asin = search_helper.check_for_asin()
         if quick_match_asin:
@@ -523,6 +529,8 @@ class AudiobookAlbum(Agent.Album):
                 helper.metadata.posters[helper.thumb] = Proxy.Media(
                     make_request(helper.thumb), sort_order=0
                 )
+                # Re-prioritize the poster to the first position
+                helper.metadata.posters.validate_keys([helper.thumb])
         # Rating.
         # We always want to refresh the rating
         if helper.rating:
