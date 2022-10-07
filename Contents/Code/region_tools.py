@@ -58,8 +58,11 @@ class RegionTool:
         region : str
             The region code to generate the URL for.
     """
-    def __init__(self, region: str, type: str, id: str = None, query: str = None):
+    def __init__(self, region, type, id = None, query = None):
         self.region = region
+        self.id = id
+        self.query = query
+        self.type = type
 
     def get_region(self):
         return self.region
@@ -75,7 +78,7 @@ class RegionTool:
         return available_regions[self.region]['TLD']
 
     def get_type_url(self):
-        return 'https://api.audnex.us' + '/' + type
+        return 'https://api.audnex.us' + '/' + self.type
 
     def get_search_url(self):
         return self.get_type_url() + self.get_region_query() + '&' + self.query
@@ -88,7 +91,7 @@ class RegionTool:
 
     # Audible
     def get_api_region_url(self):
-        return 'https://api.audible.{}/'.format(
+        return 'https://api.audible.{}'.format(
             available_regions[self.region]['TLD']
         )
 
@@ -99,4 +102,4 @@ class RegionTool:
         )
 
     def get_api_search_url(self):
-        return self.get_api_region_url() + '/' + '1.0/catalog/products' + '/' + self.get_api_params() + '&' + self.query
+        return self.get_api_region_url() + '/' + '1.0/catalog/products' + self.get_api_params() + '&' + self.query
