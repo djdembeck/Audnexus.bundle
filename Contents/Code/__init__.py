@@ -51,7 +51,7 @@ class AudiobookArtist(Agent.Artist):
 
     def search(self, results, media, lang, manual):
         # Instantiate search helper
-        search_helper = ArtistSearchTool(lang, manual, media, results)
+        search_helper = ArtistSearchTool(lang, manual, media, Prefs, results)
 
         # Validate author name
         search_helper.validate_author_name()
@@ -61,7 +61,7 @@ class AudiobookArtist(Agent.Artist):
             return
 
         search_helper.media.artist = String.StripDiacritics(
-                search_helper.media.artist
+            search_helper.media.artist
         )
 
         # Call search API
@@ -120,7 +120,7 @@ class AudiobookArtist(Agent.Artist):
         )
 
         # Instantiate update helper
-        update_helper = ArtistUpdateTool(force, lang, media, metadata)
+        update_helper = ArtistUpdateTool(force, lang, media, metadata, Prefs)
 
         self.call_item_api(update_helper)
 
@@ -193,9 +193,8 @@ class AudiobookArtist(Agent.Artist):
             Calls Audnexus API to get author details,
             then calls helper to parse those details.
         """
-        request = str(make_request(
-            helper.UPDATE_URL + helper.metadata.id
-        ))
+        update_url = helper.build_url()
+        request = str(make_request(update_url))
         response = json_decode(request)
         helper.parse_api_response(response)
 
@@ -259,7 +258,7 @@ class AudiobookAlbum(Agent.Album):
 
     def search(self, results, media, lang, manual):
         # Instantiate search helper
-        search_helper = AlbumSearchTool(lang, manual, media, results)
+        search_helper = AlbumSearchTool(lang, manual, media, Prefs, results)
 
         pre_check = search_helper.pre_search_logging()
         # Purposefully terminate search if it's bad
@@ -291,9 +290,9 @@ class AudiobookAlbum(Agent.Album):
                 )
             )
             log.info(
-                    'Using quick match based on asin: '
-                    '%s' % quick_match_asin
-                )
+                'Using quick match based on asin: '
+                '%s' % quick_match_asin
+            )
             return
 
         # Strip title of things like unabridged and spaces
@@ -389,7 +388,7 @@ class AudiobookAlbum(Agent.Album):
         )
 
         # Instantiate update helper
-        update_helper = AlbumUpdateTool(force, lang, media, metadata)
+        update_helper = AlbumUpdateTool(force, lang, media, metadata, Prefs)
 
         self.call_item_api(update_helper)
 
@@ -467,9 +466,8 @@ class AudiobookAlbum(Agent.Album):
             Calls Audnexus API to get book details,
             then calls helper to parse those details.
         """
-        request = str(make_request(
-            helper.UPDATE_URL + helper.metadata.id
-        ))
+        update_url = helper.build_url()
+        request = str(make_request(update_url))
         response = json_decode(request)
         helper.parse_api_response(response)
 

@@ -1,5 +1,6 @@
 # Import internal tools
 from logging import Logging
+from region_tools import RegionTool
 import re
 
 # Setup logger
@@ -7,15 +8,14 @@ log = Logging()
 
 
 class AlbumUpdateTool:
-    UPDATE_URL = 'https://api.audnex.us/books/'
-
-    def __init__(self, force, lang, media, metadata):
+    def __init__(self, force, lang, media, metadata, prefs):
         self.date = None
         self.force = force
         self.genres = None
         self.lang = lang
         self.media = media
         self.metadata = metadata
+        self.prefs = prefs
         self.rating = None
         self.series = ''
         self.series2 = ''
@@ -23,6 +23,16 @@ class AlbumUpdateTool:
         self.thumb = ''
         self.volume = ''
         self.volume2 = ''
+
+    def build_url(self):
+        """
+            Builds the URL for the API request.
+        """
+        region_helper = RegionTool(region=self.prefs['region'], type='books', id=self.metadata.id)
+        
+        update_url = region_helper.get_id_url()
+        log.debug('Update URL: ' + update_url)
+        return update_url
 
     def parse_api_response(self, response):
         """
@@ -109,7 +119,7 @@ class AlbumUpdateTool:
         # If the title ends with "unabridged"/"abridged", with or without parenthesis
         # remove them; case insensitive
         album_title = re.sub(r" *\(?(un)?abridged\)?$", "",
-                                album_title, flags=re.IGNORECASE)
+                             album_title, flags=re.IGNORECASE)
         # Trim any leading/trailing spaces just in case
         album_title = album_title.strip()
 
@@ -117,16 +127,25 @@ class AlbumUpdateTool:
 
 
 class ArtistUpdateTool:
-    UPDATE_URL = 'https://api.audnex.us/authors/'
-
-    def __init__(self, force, lang, media, metadata):
+    def __init__(self, force, lang, media, metadata, prefs):
         self.date = None
         self.force = force
         self.genres = None
         self.lang = lang
         self.media = media
         self.metadata = metadata
+        self.prefs = prefs
         self.thumb = ''
+
+    def build_url(self):
+        """
+            Builds the URL for the API request.
+        """
+        region_helper = RegionTool(region=self.prefs['region'], type='authors', id=self.metadata.id)
+        
+        update_url = region_helper.get_id_url()
+        log.debug('Update URL: ' + update_url)
+        return update_url
 
     def parse_api_response(self, response):
         """

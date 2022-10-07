@@ -2,6 +2,7 @@ from datetime import date
 import re
 # Import internal tools
 from logging import Logging
+from region_tools import RegionTool
 import urllib
 
 # Setup logger
@@ -11,16 +12,11 @@ asin_regex = '(?=.\\d)[A-Z\\d]{10}'
 
 
 class AlbumSearchTool:
-    SEARCH_URL = 'https://api.audible.com/1.0/catalog/products'
-    SEARCH_PARAMS = (
-        '?response_groups=contributors,product_desc,product_attrs'
-        '&num_results=25&products_sort_by=Relevance'
-    )
-
-    def __init__(self, lang, manual, media, results):
+    def __init__(self, lang, manual, media, prefs, results):
         self.lang = lang
         self.manual = manual
         self.media = media
+        self.prefs = prefs
         self.results = results
 
     def build_url(self):
@@ -32,25 +28,33 @@ class AlbumSearchTool:
         if match_asin:
             log.debug('Overriding album search with ASIN')
             album_param = '&keywords=' + urllib.quote(match_asin.group(0))
-            final_url = (
-                self.SEARCH_URL + self.SEARCH_PARAMS + album_param
-            )
-            return final_url
 
-        album_param = '&title=' + urllib.quote(self.normalizedName)
+            # Setup region helper to get search URL
+            region_helper = RegionTool(
+                type='books', query=album_param, region=self.prefs['region'])
+
+            search_url = region_helper.get_api_search_url()
+            log.debug('Search URL: %s', search_url)
+            return search_url
+
+        # If search is not an ASIN, use the album name
+        album_param = 'title=' + urllib.quote(self.normalizedName)
+
         # Fix match/manual search doesn't provide author
         if self.media.artist:
             artist_param = '&author=' + urllib.quote(self.media.artist)
         else:
             # Use keyword search to supplement missing author
-            album_param = '&keywords=' + urllib.quote(self.normalizedName)
+            album_param = 'keywords=' + urllib.quote(self.normalizedName)
             artist_param = ''
 
-        final_url = (
-            self.SEARCH_URL + self.SEARCH_PARAMS + album_param + artist_param
-        )
+        # Setup region helper to get search URL
+        region_helper = RegionTool(
+            type='books', query=(album_param + artist_param), region=self.prefs['region'])
 
-        return final_url
+        search_url = region_helper.get_api_search_url()
+        log.debug('Search URL: %s', search_url)
+        return search_url
 
     def check_for_asin(self):
         """
@@ -218,10 +222,11 @@ class AlbumSearchTool:
 class ArtistSearchTool:
     SEARCH_URL = 'https://api.audnex.us/authors'
 
-    def __init__(self, lang, manual, media, results):
+    def __init__(self, lang, manual, media, prefs, results):
         self.lang = lang
         self.manual = manual
         self.media = media
+        self.prefs = prefs
         self.results = results
 
     def build_url(self):
@@ -233,19 +238,27 @@ class ArtistSearchTool:
         if match_asin:
             log.debug('Overriding author search with ASIN')
             aritst_param = '' + urllib.quote(match_asin.group(0))
-            final_url = (
-                self.SEARCH_URL + '/' + aritst_param
-            )
-            return final_url
+
+            # Setup region helper to get search URL
+            region_helper = RegionTool(
+                type='authors', query=aritst_param, region=self.prefs['region'])
+
+            # Get search URL
+            id_url = region_helper.get_id_url()
+            log.debug('Search URL: %s', id_url)
+            return id_url
 
         modified_artist_name = self.cleanup_author_name(self.media.artist)
-        artist_param = '?name=' + urllib.quote(modified_artist_name)
+        artist_param = 'name=' + urllib.quote(modified_artist_name)
 
-        final_url = (
-            self.SEARCH_URL + artist_param
-        )
+        # Setup region helper to get search URL
+        region_helper = RegionTool(
+            type='authors', query=artist_param, region=self.prefs['region'])
 
-        return final_url
+        # Get search URL
+        search_url = region_helper.get_search_url()
+        log.debug('Search URL: %s', search_url)
+        return search_url
 
     def cleanup_author_name(self, name):
         log.debug('Artist name before cleanup: ' + name)
@@ -521,8 +534,10 @@ class ScoreTool:
         lang_dict = {
             self.english_locale: 'English',
             'de': 'Deutsch',
+            'es': 'Español',
             'fr': 'Français',
-            'it': 'Italiano'
+            'it': 'Italiano',
+            'jp': '日本語',
         }
 
         if language != lang_dict[self.helper.lang]:
