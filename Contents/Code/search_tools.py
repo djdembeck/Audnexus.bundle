@@ -546,4 +546,4 @@ def clear_contributor_text(string):
 
 def search_asin(input):
     if input:
-        return re.search(asin_regex, input)
+        return re.search(asin_regex, urllib.unquote(input).decode('utf8'))
