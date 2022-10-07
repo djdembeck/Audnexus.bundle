@@ -1,32 +1,40 @@
-[{
-	"id": "keep_existing_genres",
-	"label": "Keep existing genres in place",
-	"type": "bool",
-	"default": "false"
-},{
-	"id": "store_author_as_mood",
-	"label": "Append authors as Mood tags",
-	"type": "bool",
-	"default": "true"
-},{
-	"id": "sort_author_by_last_name",
-	"label": "Sort artist by name [Last, First]",
-	"type": "bool",
-	"default": "true"
-},{
-	"id": "simplify_title",
-	"label": "Simplify book titles (remove subtitle, series part, (un)abridged, etc.)",
-	"type": "bool",
-	"default": "false"
-},{
-	"id": "logging_level",
-	"label": "Level of plugin logging: ",
-	"type": "enum",
-	"values": [
-		"DEBUG",
-		"INFO",
-		"WARN",
-		"ERROR"
-	],
-	"default": "WARN"
-}]
+[
+    {
+        "id": "region",
+        "label": "Default region to use when searching: ",
+        "type": "enum",
+        "values": ["au", "ca", "de", "es", "fr", "in", "it", "jp", "us", "uk"],
+        "default": "us"
+    },
+    {
+        "id": "keep_existing_genres",
+        "label": "Keep existing genres in place",
+        "type": "bool",
+        "default": "false"
+    },
+    {
+        "id": "store_author_as_mood",
+        "label": "Append authors as Mood tags",
+        "type": "bool",
+        "default": "true"
+    },
+    {
+        "id": "sort_author_by_last_name",
+        "label": "Sort artist by name [Last, First]",
+        "type": "bool",
+        "default": "true"
+    },
+    {
+        "id": "simplify_title",
+        "label": "Simplify book titles (remove subtitle, series part, (un)abridged, etc.)",
+        "type": "bool",
+        "default": "false"
+    },
+    {
+        "id": "logging_level",
+        "label": "Level of plugin logging: ",
+        "type": "enum",
+        "values": ["DEBUG", "INFO", "WARN", "ERROR"],
+        "default": "WARN"
+    }
+]
