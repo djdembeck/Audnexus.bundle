@@ -564,11 +564,11 @@ def make_request(url):
         Makes and returns an HTTP request.
         Retries 4 times, increasing  time between each retry.
     """
-    sleep_time = 2
+    sleep_time = 1
     num_retries = 4
     for x in range(0, num_retries):
         try:
-            make_request = HTTP.Request(url, timeout=120, sleep=sleep_time)
+            make_request = HTTP.Request(url, timeout=90, sleep=sleep_time)
             str_error = None
         except Exception as str_error:
             log.error("Failed http request attempt #" + x + ": " + url)
