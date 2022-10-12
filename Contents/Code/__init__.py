@@ -570,6 +570,7 @@ def make_request(url):
         try:
             make_request = HTTP.Request(url, timeout=90, sleep=sleep_time)
             str_error = None
+            ssl_error = None
         except Exception as str_error:
             log.error("Failed http request attempt #" + x + ": " + url)
             log.error(str_error)
