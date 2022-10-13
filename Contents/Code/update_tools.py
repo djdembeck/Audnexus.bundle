@@ -28,7 +28,7 @@ class AlbumUpdateTool:
         """
             Builds the URL for the API request.
         """
-        region_helper = RegionTool(region=self.prefs['region'], type='books', id=self.metadata.id)
+        region_helper = RegionTool(region=self.prefs['region'], content_type='books', id=self.metadata.id)
         
         update_url = region_helper.get_id_url()
         log.debug('Update URL: ' + update_url)
@@ -141,7 +141,7 @@ class ArtistUpdateTool:
         """
             Builds the URL for the API request.
         """
-        region_helper = RegionTool(region=self.prefs['region'], type='authors', id=self.metadata.id)
+        region_helper = RegionTool(region=self.prefs['region'], content_type='authors', id=self.metadata.id)
         
         update_url = region_helper.get_id_url()
         log.debug('Update URL: ' + update_url)

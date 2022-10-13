@@ -53,6 +53,25 @@ class AudiobookArtist(Agent.Artist):
         # Instantiate search helper
         search_helper = ArtistSearchTool(lang, manual, media, Prefs, results)
 
+        # Check if we can quick match based on asin
+        quick_match_asin = search_helper.check_for_asin()
+        
+        if quick_match_asin:
+            results.Append(
+                MetadataSearchResult(
+                    id=quick_match_asin,
+                    lang=lang,
+                    name=quick_match_asin,
+                    score=100,
+                    year=1969
+                )
+            )
+            log.info(
+                'Using quick match based on asin: '
+                '%s' % quick_match_asin
+            )
+            return
+
         # Validate author name
         search_helper.validate_author_name()
 
@@ -266,17 +285,6 @@ class AudiobookAlbum(Agent.Album):
             log.debug("Didn't pass pre-check")
             return
 
-        # Run helper before passing to AlbumSearchTool
-        normalizedName = String.StripDiacritics(
-            search_helper.media.album
-        )
-
-        # Fallback to title if album is empty or literal "None"
-        if not normalizedName or normalizedName == "None":
-            normalizedName = String.StripDiacritics(
-                search_helper.media.title
-            )
-
         # Check if we can quick match based on asin
         quick_match_asin = search_helper.check_for_asin()
         if quick_match_asin:
@@ -295,8 +303,6 @@ class AudiobookAlbum(Agent.Album):
             )
             return
 
-        # Strip title of things like unabridged and spaces
-        search_helper.strip_title(normalizedName)
         # # Validate author name
         search_helper.validate_author_name()
 
@@ -307,13 +313,13 @@ class AudiobookAlbum(Agent.Album):
         if not result:
             log.warn(
                 'No results found for query "%s"',
-                normalizedName
+                search_helper.normalizedName
             )
             return
         log.debug(
             'Found %s result(s) for query "%s"',
             len(result),
-            normalizedName
+            search_helper.normalizedName
         )
 
         info = self.process_results(search_helper, result)
