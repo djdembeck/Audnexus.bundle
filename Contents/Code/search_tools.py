@@ -13,7 +13,8 @@ region_regex = '(?<=\[)[A-Za-z]{2}(?=\])'
 
 
 class SearchTool:
-    def __init__(self, lang, manual, media, prefs, results):
+    def __init__(self, content_type, lang, manual, media, prefs, results):
+        self.content_type = content_type
         self.lang = lang
         self.manual = manual
         self.media = media
@@ -39,24 +40,24 @@ class SearchTool:
             return re.match(contributor_regex, string).group(0)
         return string
 
-    def override_with_asin(self, match_asin, content_type, region=None):
+    def override_with_asin(self, match_asin, region=None):
         """
             Overrides the search with an ASIN.
         """
-        log.debug('Overriding' + ' ' + content_type + ' ' + 'search with ASIN')
+        log.debug('Overriding' + ' ' + self.content_type + ' ' + 'search with ASIN')
         asin = match_asin.group(0)
         # Param uses keyword for book and nothing for author
-        type_param = '&keywords=' if content_type == 'books' else ''
+        type_param = '&keywords=' if self.content_type == 'books' else ''
         # Wrap the param for url use
         url_param = type_param + urllib.quote(asin)
 
         # Setup region helper to get search URL
         self.region_override = region if region else self.prefs['region']
         region_helper = RegionTool(
-            content_type=content_type, query=url_param, region=self.region_override)
+            content_type=self.content_type, query=url_param, region=self.region_override)
 
         # Books use api search authors use audnexus search
-        if content_type == 'books':
+        if self.content_type == 'books':
             search_url = region_helper.get_api_search_url()
         else:
             # Set ID to ASIN
@@ -66,13 +67,13 @@ class SearchTool:
         log.debug('Search URL: %s', search_url)
         return search_url
 
-    def pre_process_title(self, content_type):
+    def pre_process_title(self):
         """
             Pre-processes the title to remove any contributor text.
         """
 
         # Setup some basic things
-        search_title = self.media.album if content_type == 'books' else self.media.title
+        search_title = self.media.album if self.content_type == 'books' else self.media.title
         asin_search_title = self.media.artist
 
         # Region override
@@ -82,14 +83,14 @@ class SearchTool:
         log.info('Region Override: %s', self.region_override)
 
         # Normalize name
-        if content_type == 'books':
+        if self.content_type == 'books':
             self.normalize_name()
             asin_search_title = self.normalizedName
 
         # ASIN override
         match_asin = self.search_asin(asin_search_title)
         if match_asin:
-            return self.override_with_asin(match_asin, content_type, self.region_override)
+            return self.override_with_asin(match_asin, self.content_type, self.region_override)
 
     def search_asin(self, input):
         if input:
@@ -107,7 +108,7 @@ class AlbumSearchTool(SearchTool):
         """
 
         # Pre-process title. If ASIN is found, return the URL
-        pre_process = self.pre_process_title('books')
+        pre_process = self.pre_process_title()
         if pre_process:
             return pre_process
 
@@ -125,7 +126,7 @@ class AlbumSearchTool(SearchTool):
 
         # Setup region helper to get search URL
         region_helper = RegionTool(
-            content_type='books', query=(album_param + artist_param), region=self.region_override)
+            content_type=self.content_type, query=(album_param + artist_param), region=self.region_override)
 
         search_url = region_helper.get_api_search_url()
         log.debug('Search URL: %s', search_url)
@@ -276,7 +277,7 @@ class ArtistSearchTool(SearchTool):
         """
 
         # Pre-process title. If ASIN is found, return the URL
-        pre_process = self.pre_process_title('authors')
+        pre_process = self.pre_process_title()
         if pre_process:
             return pre_process
 
@@ -285,7 +286,7 @@ class ArtistSearchTool(SearchTool):
 
         # Setup region helper to get search URL
         region_helper = RegionTool(
-            content_type='authors', query=artist_param, region=self.region_override)
+            content_type=self.content_type, query=artist_param, region=self.region_override)
 
         # Get search URL
         search_url = region_helper.get_search_url()

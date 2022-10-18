@@ -51,7 +51,7 @@ class AudiobookArtist(Agent.Artist):
 
     def search(self, results, media, lang, manual):
         # Instantiate search helper
-        search_helper = ArtistSearchTool(lang, manual, media, Prefs, results)
+        search_helper = ArtistSearchTool('authors', lang, manual, media, Prefs, results)
 
         # Check if we can quick match based on asin
         quick_match_asin = search_helper.check_for_asin()
@@ -277,7 +277,7 @@ class AudiobookAlbum(Agent.Album):
 
     def search(self, results, media, lang, manual):
         # Instantiate search helper
-        search_helper = AlbumSearchTool(lang, manual, media, Prefs, results)
+        search_helper = AlbumSearchTool('books', lang, manual, media, Prefs, results)
 
         pre_check = search_helper.pre_search_logging()
         # Purposefully terminate search if it's bad
