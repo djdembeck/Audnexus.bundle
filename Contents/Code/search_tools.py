@@ -29,10 +29,23 @@ class SearchTool:
         # Default to album and use artist if no album
         manual_asin = self.media.album if self.media.album else self.media.artist
         manual_search_asin = self.search_asin(manual_asin)
+
         if filename_search_asin:
-            return filename_search_asin.group(0)
+            region = self.check_for_region(self.media.filename)
+            return filename_search_asin.group(0) + '_' + region
         elif manual_search_asin:
-            return manual_search_asin.group(0)
+            region = self.check_for_region(manual_asin)
+            return manual_search_asin.group(0) + '_' + region
+
+    # Check for region override
+    def check_for_region(self, search_title):
+        """
+            Overrides the search with a region.
+        """
+        match_region = self.search_region(search_title)
+        self.region_override = match_region.group(
+            0) if match_region else self.prefs['region']
+        log.info('Region Override: %s', self.region_override)
 
     def clear_contributor_text(self, string):
         contributor_regex = '.+?(?= -)'
@@ -81,10 +94,7 @@ class SearchTool:
         asin_search_title = self.media.artist
 
         # Region override
-        match_region = self.search_region(search_title)
-        self.region_override = match_region.group(
-            0) if match_region else self.prefs['region']
-        log.info('Region Override: %s', self.region_override)
+        self.region_override = self.region_override(search_title)
 
         # Normalize name
         if self.content_type == 'books':
