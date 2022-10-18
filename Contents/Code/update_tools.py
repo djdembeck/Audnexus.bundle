@@ -84,7 +84,6 @@ class UpdateTool:
         # Get the ASIN from the ID
         asin = self.metadata.id.split('_')[0]
         log.debug('Extracted ASIN from ID: ' + asin)
-        # return ASIN
         return asin
 
     def extract_region_from_id(self):

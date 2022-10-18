@@ -40,11 +40,15 @@ class SearchTool:
             return re.match(contributor_regex, string).group(0)
         return string
 
+    def log_search_url(self, search_url):
+        log.debug('Search URL: %s', search_url)
+
     def override_with_asin(self, match_asin, region=None):
         """
             Overrides the search with an ASIN.
         """
-        log.debug('Overriding' + ' ' + self.content_type + ' ' + 'search with ASIN')
+        log.debug('Overriding' + ' ' + self.content_type +
+                  ' ' + 'search with ASIN')
         asin = match_asin.group(0)
         # Param uses keyword for book and nothing for author
         type_param = '&keywords=' if self.content_type == 'books' else ''
@@ -64,7 +68,7 @@ class SearchTool:
             region_helper.id = asin
             search_url = region_helper.get_id_url()
 
-        log.debug('Search URL: %s', search_url)
+        self.log_search_url(search_url)
         return search_url
 
     def pre_process_title(self):
@@ -90,7 +94,7 @@ class SearchTool:
         # ASIN override
         match_asin = self.search_asin(asin_search_title)
         if match_asin:
-            return self.override_with_asin(match_asin, self.content_type, self.region_override)
+            return self.override_with_asin(match_asin, self.region_override)
 
     def search_asin(self, input):
         if input:
@@ -129,7 +133,7 @@ class AlbumSearchTool(SearchTool):
             content_type=self.content_type, query=(album_param + artist_param), region=self.region_override)
 
         search_url = region_helper.get_api_search_url()
-        log.debug('Search URL: %s', search_url)
+        self.log_search_url(search_url)
         return search_url
 
     def check_if_preorder(self, book_date):
@@ -168,7 +172,7 @@ class AlbumSearchTool(SearchTool):
         log.debug('Input Name: %s', input_name)
 
         # Remove brackets and text inside
-        name = re.sub(r'\[.*?\]', '', input_name)
+        name = re.sub(r'\[[^"]*\]', '', input_name)
         # Remove unwanted characters
         name = re.sub(r'[^\w\s]', '', name)
         # Remove unwanted words
@@ -291,7 +295,7 @@ class ArtistSearchTool(SearchTool):
 
         # Get search URL
         search_url = region_helper.get_search_url()
-        log.debug('Search URL: %s', search_url)
+        self.log_search_url(search_url)
         return search_url
 
     def cleanup_author_name(self, name):
