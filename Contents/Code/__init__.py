@@ -139,7 +139,7 @@ class AudiobookArtist(Agent.Artist):
         )
 
         # Instantiate update helper
-        update_helper = ArtistUpdateTool(force, lang, media, metadata, Prefs)
+        update_helper = ArtistUpdateTool('authors', force, lang, media, metadata, Prefs)
 
         self.call_item_api(update_helper)
 
@@ -256,7 +256,7 @@ class AudiobookArtist(Agent.Artist):
                     make_request(helper.thumb), sort_order=0
                 )
 
-        helper.writeInfo()
+        helper.log_update_metadata()
 
     def hasProxy(self):
         return Prefs['imageproxyurl'] is not None
@@ -394,7 +394,7 @@ class AudiobookAlbum(Agent.Album):
         )
 
         # Instantiate update helper
-        update_helper = AlbumUpdateTool(force, lang, media, metadata, Prefs)
+        update_helper = AlbumUpdateTool('books', force, lang, media, metadata, Prefs)
 
         self.call_item_api(update_helper)
 
@@ -540,7 +540,7 @@ class AudiobookAlbum(Agent.Album):
         if helper.rating:
             helper.metadata.rating = float(helper.rating) * 2
 
-        helper.writeInfo()
+        helper.log_update_metadata()
 
     def getDateFromString(self, string):
         try:

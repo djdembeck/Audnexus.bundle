@@ -7,15 +7,132 @@ import re
 log = Logging()
 
 
-class AlbumUpdateTool:
-    def __init__(self, force, lang, media, metadata, prefs):
-        self.date = None
+class UpdateTool:
+    def __init__(self, content_type, force, lang, media, metadata, prefs):
+        self.content_type = content_type
         self.force = force
-        self.genres = None
         self.lang = lang
         self.media = media
         self.metadata = metadata
         self.prefs = prefs
+        self.region = self.extract_region_from_id()
+
+    def build_url(self):
+        """
+            Builds the URL for the API request.
+        """
+        # Get the current region
+        self.region_override = self.region if self.region else self.prefs['region']
+        # Set the region helper
+        region_helper = RegionTool(
+            region=self.region_override, content_type=self.content_type, id=self.extract_asin_from_id())
+
+        update_url = region_helper.get_id_url()
+        log.debug('Update URL: ' + update_url)
+        return update_url
+
+    def collect_metadata_to_log(self):
+        # Start an array with common metadata
+        data_to_log = [{'ASIN': self.metadata.id}]
+
+        # Book metadata
+        book_data_to_log = [
+            {'Book poster URL': self.thumb},
+            {'Book publisher': self.metadata.studio},
+            {'Book release date': str(self.metadata.originally_available_at)},
+            {'Book sort title': self.metadata.title_sort},
+            {'Book summary': self.metadata.summary},
+            {'Book title': self.metadata.title},
+        ]
+
+        # Author metadata
+        author_data_to_log = [
+            {'Author bio': self.metadata.summary},
+            {'Author name': self.metadata.title},
+            {'Author poster URL': self.thumb},
+            {'Author sort name': self.metadata.title_sort},
+        ]
+
+        # Determine which metadata to log
+        if self.content_type == 'book':
+            data_to_log.extend(book_data_to_log)
+        elif self.content_type == 'author':
+            data_to_log.extend(author_data_to_log)
+
+        return data_to_log
+
+    def collect_metadata_arrs_to_log(self):
+        # Start an array with common metadata
+        multi_arr = [{'Genres': self.metadata.genres}]
+
+        # Book metadata
+        book_multi_arr = [
+            {'Moods (Authors)': self.metadata.moods},
+            {'Styles (Narrators)': self.metadata.styles},
+        ]
+
+        # Determine which metadata to log
+        if self.content_type == 'book':
+            multi_arr.extend(book_multi_arr)
+
+        return multi_arr
+
+    def extract_asin_from_id(self):
+        """
+            Extracts the ASIN from the ID.
+        """
+        # Get the ASIN from the ID
+        asin = self.metadata.id.split('_')[0]
+        log.debug('Extracted ASIN from ID: ' + asin)
+        # return ASIN
+        return asin
+
+    def extract_region_from_id(self):
+        """
+            Extracts the region from the ASIN and sets the region.
+        """
+        # Get the region from the ASIN
+        try:
+            region = self.metadata.id.split('_')[1]
+            log.debug('Extracted region from ASIN: ' + region)
+        except IndexError:
+            log.info('No region found in ID, using default region.')
+            region = 'us'
+            # Save the region to the ID
+            self.metadata.id = self.metadata.id + '_' + region
+        # Set region and ASIN
+        return region
+
+    # Writes metadata information to log.
+    def log_update_metadata(self):
+        # Send a separator to the log
+        log.separator(
+            msg=(
+                'FINALIZED: ' + self.metadata.title +
+                ', ID: ' + self.metadata.id
+            ),
+            log_level="info"
+        )
+
+        # Collect metadata to log
+        data_to_log = self.collect_metadata_to_log()
+        log.metadata(data_to_log, log_level="info")
+
+        # Collect metadata arrays to log
+        multi_arr = self.collect_metadata_arrs_to_log()
+        log.metadata_arrs(multi_arr, log_level="info")
+
+        log.separator(log_level="info")
+
+
+class AlbumUpdateTool(UpdateTool):
+    def parse_api_response(self, response):
+        """
+            Parses keys from API into helper variables if they exist.
+        """
+        # Set empty variables
+        self.date = None
+        self.genres = None
         self.rating = None
         self.series = ''
         self.series2 = ''
@@ -24,20 +141,6 @@ class AlbumUpdateTool:
         self.volume = ''
         self.volume2 = ''
 
-    def build_url(self):
-        """
-            Builds the URL for the API request.
-        """
-        region_helper = RegionTool(region=self.prefs['region'], content_type='books', id=self.metadata.id)
-        
-        update_url = region_helper.get_id_url()
-        log.debug('Update URL: ' + update_url)
-        return update_url
-
-    def parse_api_response(self, response):
-        """
-            Parses keys from API into helper variables if they exist.
-        """
         if 'authors' in response:
             self.author = response['authors']
         if 'releaseDate' in response:
@@ -78,38 +181,6 @@ class AlbumUpdateTool:
             return prefixed_string
         return string
 
-    # Writes metadata information to log.
-    def writeInfo(self):
-        log.separator(
-            msg=(
-                'FINALIZED: ' + self.metadata.title +
-                ', ID: ' + self.metadata.id
-            ),
-            log_level="info"
-        )
-
-        # Log basic metadata
-        data_to_log = [
-            {'ASIN': self.metadata.id},
-            {'Album poster URL': self.thumb},
-            {'Album publisher': self.metadata.studio},
-            {'Album release date': str(self.metadata.originally_available_at)},
-            {'Album sort title': self.metadata.title_sort},
-            {'Album summary': self.metadata.summary},
-            {'Album title': self.metadata.title},
-        ]
-        log.metadata(data_to_log, log_level="info")
-
-        # Log basic metadata stored in arrays
-        multi_arr = [
-            {'Genres': self.metadata.genres},
-            {'Moods(Authors)': self.metadata.moods},
-            {'Styles(Narrators)': self.metadata.styles},
-        ]
-        log.metadata_arrs(multi_arr, log_level="info")
-
-        log.separator(log_level="info")
-
     # Remove extra description text from the title
     def simplify_title(self):
         # If the title ends with a series part, remove it
@@ -126,31 +197,16 @@ class AlbumUpdateTool:
         return album_title
 
 
-class ArtistUpdateTool:
-    def __init__(self, force, lang, media, metadata, prefs):
-        self.date = None
-        self.force = force
-        self.genres = None
-        self.lang = lang
-        self.media = media
-        self.metadata = metadata
-        self.prefs = prefs
-        self.thumb = ''
-
-    def build_url(self):
-        """
-            Builds the URL for the API request.
-        """
-        region_helper = RegionTool(region=self.prefs['region'], content_type='authors', id=self.metadata.id)
-        
-        update_url = region_helper.get_id_url()
-        log.debug('Update URL: ' + update_url)
-        return update_url
-
+class ArtistUpdateTool(UpdateTool):
     def parse_api_response(self, response):
         """
             Parses keys from API into helper variables if they exist.
         """
+        # Set empty variables
+        self.date = None
+        self.genres = None
+        self.thumb = ''
+
         if 'description' in response:
             self.description = response['description']
         if 'genres' in response:
@@ -159,34 +215,6 @@ class ArtistUpdateTool:
             self.name = response['name']
         if 'image' in response:
             self.thumb = response['image']
-
-    # Writes metadata information to log.
-    def writeInfo(self):
-        log.separator(
-            msg=(
-                'FINALIZED: ' + self.metadata.title +
-                ', ID: ' + self.metadata.id
-            ),
-            log_level="info"
-        )
-
-        # Log basic metadata
-        data_to_log = [
-            {'ASIN': self.metadata.id},
-            {'Author bio': self.metadata.summary},
-            {'Author name': self.metadata.title},
-            {'Author poster URL': self.thumb},
-            {'Author sort name': self.metadata.title_sort},
-        ]
-        log.metadata(data_to_log, log_level="info")
-
-        # Log basic metadata stored in arrays
-        multi_arr = [
-            {'Genres': self.metadata.genres},
-        ]
-        log.metadata_arrs(multi_arr, log_level="info")
-
-        log.separator(log_level="info")
 
 
 class TagTool:

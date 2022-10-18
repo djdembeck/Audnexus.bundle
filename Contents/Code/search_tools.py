@@ -202,11 +202,12 @@ class AlbumSearchTool(SearchTool):
             }:
                 search_results.append(
                     {
-                        'asin': item['asin'],
+                        'asin': item['asin'] + '_' + self.region_override,
                         'author': item['authors'],
                         'date': item['release_date'],
                         'language': item['language'],
                         'narrator': item['narrators'],
+                        'region': self.region_override,
                         'title': item['title'],
                     }
                 )
@@ -444,6 +445,7 @@ class ScoreTool:
         self.date = None
         self.language = None
         self.narrator = None
+        self.region = None
         self.title = None
         return self.score_result()
 
@@ -456,6 +458,7 @@ class ScoreTool:
         self.date = self.result_dict['date']
         self.language = self.result_dict['language'].title()
         self.narrator = self.result_dict['narrator'][0]['name']
+        self.region = self.result_dict['region']
         self.title = self.result_dict['title']
         return self.score_result()
 
@@ -505,6 +508,9 @@ class ScoreTool:
         if self.narrator:
             plex_score_dict['narrator'] = self.narrator
             data_to_log.append({'Narrator is': self.narrator})
+        if self.region:
+            plex_score_dict['region'] = self.region
+            data_to_log.append({'Region is': self.region})
         if score:
             plex_score_dict['score'] = score
             data_to_log.append({'Score is': str(score)})
