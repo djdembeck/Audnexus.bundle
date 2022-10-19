@@ -2,66 +2,161 @@ from datetime import date
 import re
 # Import internal tools
 from logging import Logging
+from region_tools import RegionTool
 import urllib
 
 # Setup logger
 log = Logging()
 
 asin_regex = '(?=.\\d)[A-Z\\d]{10}'
+region_regex = '(?<=\[)[A-Za-z]{2}(?=\])'
 
 
-class AlbumSearchTool:
-    SEARCH_URL = 'https://api.audible.com/1.0/catalog/products'
-    SEARCH_PARAMS = (
-        '?response_groups=contributors,product_desc,product_attrs'
-        '&num_results=25&products_sort_by=Relevance'
-    )
-
-    def __init__(self, lang, manual, media, results):
+class SearchTool:
+    def __init__(self, content_type, lang, manual, media, prefs, results):
+        self.content_type = content_type
         self.lang = lang
         self.manual = manual
         self.media = media
+        self.prefs = prefs
         self.results = results
 
-    def build_url(self):
+    def build_url(self, query):
         """
             Generates the URL string with search paramaters for API call.
         """
-        # If search is an ASIN, use that
-        match_asin = search_asin(self.normalizedName)
-        if match_asin:
-            log.debug('Overriding album search with ASIN')
-            album_param = '&keywords=' + urllib.quote(match_asin.group(0))
-            final_url = (
-                self.SEARCH_URL + self.SEARCH_PARAMS + album_param
-            )
-            return final_url
+        # Pre-process title. If ASIN is found, return the URL
+        pre_process = self.pre_process_title()
+        if pre_process:
+            return pre_process
 
-        album_param = '&title=' + urllib.quote(self.normalizedName)
-        # Fix match/manual search doesn't provide author
-        if self.media.artist:
-            artist_param = '&author=' + urllib.quote(self.media.artist)
-        else:
-            # Use keyword search to supplement missing author
-            album_param = '&keywords=' + urllib.quote(self.normalizedName)
-            artist_param = ''
+        # Setup region helper to get search URL
+        region_helper = RegionTool(
+            content_type=self.content_type, query=query, region=self.region_override)
 
-        final_url = (
-            self.SEARCH_URL + self.SEARCH_PARAMS + album_param + artist_param
-        )
-
-        return final_url
+        search_url = region_helper.get_api_search_url(
+        ) if self.content_type == 'books' else region_helper.get_search_url()
+        self.log_search_url(search_url)
+        return search_url
 
     def check_for_asin(self):
         """
             Checks filename and search query for ASIN to quick match.
         """
-        filename_search_asin = search_asin(self.media.filename)
-        manual_search_asin = search_asin(self.media.album)
+        filename_search_asin = self.search_asin(self.media.filename)
+        # Default to album and use artist if no album
+        manual_asin = self.media.album if self.media.album else self.media.artist
+        manual_search_asin = self.search_asin(manual_asin)
+
         if filename_search_asin:
-            return filename_search_asin.group(0)
+            log.info('ASIN found in filename')
+            self.check_for_region(self.media.filename)
+            return filename_search_asin.group(0) + '_' + self.region_override
         elif manual_search_asin:
-            return manual_search_asin.group(0)
+            log.info('ASIN found in manual search')
+            self.check_for_region(manual_asin)
+            return manual_search_asin.group(0) + '_' + self.region_override
+
+    # Check for region override
+    def check_for_region(self, search_title):
+        """
+            Overrides the search with a region.
+        """
+        match_region = self.search_region(search_title)
+        if match_region:
+            log.info('Region found in title')
+            self.region_override = match_region.group(0)
+        else:
+            self.region_override = self.prefs['region']
+        log.info('Region Override: %s', self.region_override)
+
+    def clear_contributor_text(self, string):
+        contributor_regex = '.+?(?= -)'
+        if re.match(contributor_regex, string):
+            return re.match(contributor_regex, string).group(0)
+        return string
+
+    def log_search_url(self, search_url):
+        log.debug('Search URL: %s', search_url)
+
+    def override_with_asin(self, match_asin, region=None):
+        """
+            Overrides the search with an ASIN.
+        """
+        log.debug('Overriding' + ' ' + self.content_type +
+                  ' ' + 'search with ASIN')
+        asin = match_asin.group(0)
+        # Param uses keyword for book and nothing for author
+        type_param = '&keywords=' if self.content_type == 'books' else ''
+        # Wrap the param for url use
+        url_param = type_param + urllib.quote(asin)
+
+        # Setup region helper to get search URL
+        self.region_override = region if region else self.prefs['region']
+        region_helper = RegionTool(
+            content_type=self.content_type, query=url_param, region=self.region_override)
+
+        # Books use api search authors use audnexus search
+        if self.content_type == 'books':
+            search_url = region_helper.get_api_search_url()
+        else:
+            # Set ID to ASIN
+            region_helper.id = asin
+            search_url = region_helper.get_id_url()
+
+        self.log_search_url(search_url)
+        return search_url
+
+    def pre_process_title(self):
+        """
+            Pre-processes the title to remove any contributor text.
+        """
+        log.debug('Pre-processing title')
+        # Setup some basic things
+        search_title = self.media.album if self.content_type == 'books' else self.media.artist
+        asin_search_title = self.media.artist
+
+        # Region override
+        self.check_for_region(search_title)
+
+        # Normalize name
+        if self.content_type == 'books':
+            self.normalize_name()
+            asin_search_title = self.normalizedName
+
+        # ASIN override
+        match_asin = self.search_asin(asin_search_title)
+        if match_asin:
+            log.debug('ASIN found in title')
+            return self.override_with_asin(match_asin, self.region_override)
+
+    def search_asin(self, input):
+        if input:
+            return re.search(asin_regex, urllib.unquote(input).decode('utf8'))
+
+    def search_region(self, input):
+        if input:
+            return re.search(region_regex, urllib.unquote(input).decode('utf8'))
+
+
+class AlbumSearchTool(SearchTool):
+    def build_search_args(self):
+        """
+            Builds the search arguments for the API call.
+        """
+        # If search is not an ASIN, use the album name
+        album_param = 'title=' + urllib.quote(self.normalizedName)
+
+        # Fix match/manual search doesn't provide author
+        if self.media.artist:
+            artist_param = '&author=' + urllib.quote(self.media.artist)
+        else:
+            # Use keyword search to supplement missing author
+            album_param = 'keywords=' + urllib.quote(self.normalizedName)
+            artist_param = ''
+        # Combine params
+        query = (album_param + artist_param)
+        return query
 
     def check_if_preorder(self, book_date):
         current_date = (date.today())
@@ -69,24 +164,12 @@ class AlbumSearchTool:
             log.info("Excluding pre-order book")
             return True
 
-    def get_id_from_url(self, item):
-        url = item['url']
-        log.debug('URL For Breakdown: %s', url)
-
-        # Find ASIN before ? in URL
-        asin = re.search(r'[0-9A-Z]{9}.+?(?=\?)', url).group(0)
-        if asin:
-            return asin
-
-        log.warn('No Match: %s', url)
-        return None
-
     def name_to_initials(self, input_name):
         # Shorten input_name by splitting on whitespaces
         # Only the surname stays as whole, the rest gets truncated
         # and merged with dots.
         # Example: 'Arthur Conan Doyle' -> 'A.C.Doyle'
-        name_parts = clear_contributor_text(input_name).split()
+        name_parts = self.clear_contributor_text(input_name).split()
 
         # Check if prename and surname exist, otherwise exit
         if len(name_parts) < 2:
@@ -100,6 +183,32 @@ class AlbumSearchTool:
         new_name += name_parts[-1]
 
         return new_name
+
+    def normalize_name(self):
+        """
+            Normalizes the album name by removing
+            unwanted characters and words.
+        """
+        # Get name from either album or title
+        input_name = self.media.album if self.media.album else self.media.title
+        log.debug('Input Name: %s', input_name)
+
+        # Remove brackets and text inside
+        name = re.sub(r'\[[^"]*\]', '', input_name)
+        # Remove unwanted characters
+        name = re.sub(r'[^\w\s]', '', name)
+        # Remove unwanted words
+        name = re.sub(r'\b(official|audiobook|unabridged|abridged)\b',
+                      '', name, flags=re.IGNORECASE)
+        # Remove unwanted whitespaces
+        name = re.sub(r'\s+', ' ', name)
+        # Remove leading and trailing whitespaces
+        name = name.strip()
+        # Set class variable
+        self.normalizedName = name
+        log.debug('Normalized Name: %s', self.normalizedName)
+
+        return name
 
     def parse_api_response(self, api_response):
         """
@@ -119,11 +228,12 @@ class AlbumSearchTool:
             }:
                 search_results.append(
                     {
-                        'asin': item['asin'],
+                        'asin': item['asin'] + '_' + self.region_override,
                         'author': item['authors'],
                         'date': item['release_date'],
                         'language': item['language'],
                         'narrator': item['narrators'],
+                        'region': self.region_override,
                         'title': item['title'],
                     }
                 )
@@ -168,34 +278,6 @@ class AlbumSearchTool:
                 self.media.album = self.media.name
         return True
 
-    def strip_title(self, normalizedName):
-        if not normalizedName:
-            normalizedName = self.media.album
-        log.debug(
-            'normalizedName = %s', normalizedName
-        )
-
-        # Chop off "unabridged"
-        normalizedName = re.sub(
-            r"[\(\[].*?[\)\]]", "", normalizedName
-        )
-        log.debug(
-            'chopping bracketed text = %s', normalizedName
-        )
-        normalizedName = normalizedName.strip()
-        log.debug(
-            'normalizedName stripped = %s', normalizedName
-        )
-
-        log.separator(
-            msg=(
-                "SEARCHING FOR " + '"' + normalizedName + '"'
-            ),
-            log_level="info"
-        )
-        # Give access of this variable to the class
-        self.normalizedName = normalizedName
-
     def validate_author_name(self):
         """
             Checks a list of known bad author names.
@@ -215,40 +297,21 @@ class AlbumSearchTool:
                 break
 
 
-class ArtistSearchTool:
-    SEARCH_URL = 'https://api.audnex.us/authors'
-
-    def __init__(self, lang, manual, media, results):
-        self.lang = lang
-        self.manual = manual
-        self.media = media
-        self.results = results
-
-    def build_url(self):
+class ArtistSearchTool(SearchTool):
+    def build_search_args(self):
         """
-            Generates the URL string with search paramaters for API call.
+            Builds the search query for the API.
         """
-        # If search is an ASIN, use that
-        match_asin = search_asin(self.media.artist)
-        if match_asin:
-            log.debug('Overriding author search with ASIN')
-            aritst_param = '' + urllib.quote(match_asin.group(0))
-            final_url = (
-                self.SEARCH_URL + '/' + aritst_param
-            )
-            return final_url
-
         modified_artist_name = self.cleanup_author_name(self.media.artist)
-        artist_param = '?name=' + urllib.quote(modified_artist_name)
-
-        final_url = (
-            self.SEARCH_URL + artist_param
-        )
-
-        return final_url
+        query = 'name=' + urllib.quote(modified_artist_name)
+        # Set param
+        return query
 
     def cleanup_author_name(self, name):
         log.debug('Artist name before cleanup: ' + name)
+
+        # Remove brackets and text inside
+        name = re.sub(r'\[[^"]*\]', '', name)
         # Remove certain strings, such as titles
         str_to_remove = [
             'Dr.',
@@ -314,14 +377,14 @@ class ArtistSearchTool:
         if len(author_array) > 1:
             # Go through list of artists until we find a non contributor
             for i, r in enumerate(author_array):
-                if clear_contributor_text(r) != r:
+                if self.clear_contributor_text(r) != r:
                     log.debug('Author #' + str(i+1) + ' is a contributor')
                     # If all authors are contributors use the first
                     if i == len(author_array) - 1:
                         log.debug(
                             'All authors are contributors, using the first one'
                         )
-                        self.media.artist = clear_contributor_text(
+                        self.media.artist = self.clear_contributor_text(
                             author_array[0]
                         )
                         return
@@ -336,12 +399,12 @@ class ArtistSearchTool:
                 return
         else:
             if (
-                clear_contributor_text(self.media.artist)
+                self.clear_contributor_text(self.media.artist)
                 !=
                 self.media.artist
             ):
                 log.debug('Stripped contributor tag from author')
-                self.media.artist = clear_contributor_text(
+                self.media.artist = self.clear_contributor_text(
                     self.media.artist
                 )
 
@@ -398,6 +461,7 @@ class ScoreTool:
         self.date = None
         self.language = None
         self.narrator = None
+        self.region = None
         self.title = None
         return self.score_result()
 
@@ -410,6 +474,7 @@ class ScoreTool:
         self.date = self.result_dict['date']
         self.language = self.result_dict['language'].title()
         self.narrator = self.result_dict['narrator'][0]['name']
+        self.region = self.result_dict['region']
         self.title = self.result_dict['title']
         return self.score_result()
 
@@ -459,6 +524,9 @@ class ScoreTool:
         if self.narrator:
             plex_score_dict['narrator'] = self.narrator
             data_to_log.append({'Narrator is': self.narrator})
+        if self.region:
+            plex_score_dict['region'] = self.region
+            data_to_log.append({'Region is': self.region})
         if score:
             plex_score_dict['score'] = score
             data_to_log.append({'Score is': str(score)})
@@ -521,8 +589,10 @@ class ScoreTool:
         lang_dict = {
             self.english_locale: 'English',
             'de': 'Deutsch',
+            'es': 'Español',
             'fr': 'Français',
-            'it': 'Italiano'
+            'it': 'Italiano',
+            'jp': '日本語',
         }
 
         if language != lang_dict[self.helper.lang]:
@@ -534,16 +604,3 @@ class ScoreTool:
             log.debug("Book is not library language, deduct 2 points")
             return 2
         return 0
-
-
-# Shared functions
-def clear_contributor_text(string):
-    contributor_regex = '.+?(?= -)'
-    if re.match(contributor_regex, string):
-        return re.match(contributor_regex, string).group(0)
-    return string
-
-
-def search_asin(input):
-    if input:
-        return re.search(asin_regex, input)
