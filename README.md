@@ -35,11 +35,23 @@ The aim of this project is to automate as much as possible, and make some intell
 
 Audnexus will first search a book/author to see if it's come across it before. If it's found, it returns them straight away. If not, it requests that the aggregator import all the available data. Thus, the more people who use audnexus' client plugins, the faster the API will be and more data complete. You can also run a fork of the API yourself, see the above repo on how to do that.
 
+Available regions:
+- `[au]` - `.com.au`
+- `[ca]` - `.ca`
+- `[de]` - `.de`
+- `[es]` - `.es`
+- `[fr]` - `.fr`
+- `[in]` - `.in`
+- `[it]` - `.it`
+- `[jp]` - `.co.jp`
+- `[us]` - `.com`
+- `[uk]` - `.co.uk`
+
+***NOTE***: The agent was built for English-based regions. If you find an issue with your region, please open a new issue or PR.
+
 ## 🏁 Getting Started <a name = "getting_started"></a>
 
 Getting the agent up and running is a very smooth process, whether this is your first foray into audiobooks or you are migrating a library from another audiobooks agent. We look forward to getting you high quality data!
-
-NOTE: Data is currently only available for the US region.
 
 ### Prerequisites
 
@@ -71,7 +83,33 @@ git pull
 If you wish to use local tags/images, you can follow the directions [here](https://github.com/seanap/Plex-Audiobook-Guide#configure-metadata-agent-in-plex), but this agent assumes you will not.
 
 ### Using quick match
-You may use the Audible ASIN in both filename and in manual search. Doing so will automatically use the ASIN provided without searching the database. For example: `Author Name/Book Name B01234ABCD/Book Name: Subtitle.m4b`.
+
+There are currently 2 quick match/search override options:
+- **ASIN**: Bypasses search and explicitly uses the ASIN Provided
+- **Region** (ie `[uk]`): Searches the given region instead of your set region.
+
+Quick match supports filename and manual search.
+
+This works for both authors and books. By default, the ASIN is searched in your library's `region` (from agent settings).
+
+You may override region on a per author/book basis using the region code in brackets, such as `[uk]` either before or after the other search terms.
+
+Here are some quick match examples:
+
+- Override region
+```
+[uk] NAME
+```
+- Override asin and region
+```
+[uk] B01234ABCD
+```
+- Override ASIN and Region from filename
+```
+Author Name/Book Name B01234ABCD [uk]/Book Name: Subtitle.m4b
+```
+
+***NOTE***: Authors cannot be quick matched from filenames.
 
 ### Create an audiobook library
 
