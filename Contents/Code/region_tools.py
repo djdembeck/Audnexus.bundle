@@ -45,7 +45,7 @@ available_regions = {
 class RegionTool:
     """
         Used to generate URLs for different regions for both Audible and Audnexus.
-        
+
         Parameters
         ----------
         type : str
@@ -58,7 +58,8 @@ class RegionTool:
         region : str
             The region code to generate the URL for.
     """
-    def __init__(self, region, content_type, id = None, query = None):
+
+    def __init__(self, region, content_type, id=None, query=None):
         self.region = region
         self.id = id
         self.query = query
