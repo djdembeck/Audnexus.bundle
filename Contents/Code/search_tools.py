@@ -21,6 +21,24 @@ class SearchTool:
         self.prefs = prefs
         self.results = results
 
+    def build_url(self, query):
+        """
+            Generates the URL string with search paramaters for API call.
+        """
+        # Pre-process title. If ASIN is found, return the URL
+        pre_process = self.pre_process_title()
+        if pre_process:
+            return pre_process
+
+        # Setup region helper to get search URL
+        region_helper = RegionTool(
+            content_type=self.content_type, query=query, region=self.region_override)
+
+        search_url = region_helper.get_api_search_url(
+        ) if self.content_type == 'books' else region_helper.get_search_url()
+        self.log_search_url(search_url)
+        return search_url
+
     def check_for_asin(self):
         """
             Checks filename and search query for ASIN to quick match.
@@ -31,11 +49,13 @@ class SearchTool:
         manual_search_asin = self.search_asin(manual_asin)
 
         if filename_search_asin:
-            region = self.check_for_region(self.media.filename)
-            return filename_search_asin.group(0) + '_' + region
+            log.info('ASIN found in filename')
+            self.check_for_region(self.media.filename)
+            return filename_search_asin.group(0) + '_' + self.region_override
         elif manual_search_asin:
-            region = self.check_for_region(manual_asin)
-            return manual_search_asin.group(0) + '_' + region
+            log.info('ASIN found in manual search')
+            self.check_for_region(manual_asin)
+            return manual_search_asin.group(0) + '_' + self.region_override
 
     # Check for region override
     def check_for_region(self, search_title):
@@ -43,8 +63,11 @@ class SearchTool:
             Overrides the search with a region.
         """
         match_region = self.search_region(search_title)
-        self.region_override = match_region.group(
-            0) if match_region else self.prefs['region']
+        if match_region:
+            log.info('Region found in title')
+            self.region_override = match_region.group(0)
+        else:
+            self.region_override = self.prefs['region']
         log.info('Region Override: %s', self.region_override)
 
     def clear_contributor_text(self, string):
@@ -88,13 +111,13 @@ class SearchTool:
         """
             Pre-processes the title to remove any contributor text.
         """
-
+        log.debug('Pre-processing title')
         # Setup some basic things
-        search_title = self.media.album if self.content_type == 'books' else self.media.title
+        search_title = self.media.album if self.content_type == 'books' else self.media.artist
         asin_search_title = self.media.artist
 
         # Region override
-        self.region_override = self.region_override(search_title)
+        self.check_for_region(search_title)
 
         # Normalize name
         if self.content_type == 'books':
@@ -104,6 +127,7 @@ class SearchTool:
         # ASIN override
         match_asin = self.search_asin(asin_search_title)
         if match_asin:
+            log.debug('ASIN found in title')
             return self.override_with_asin(match_asin, self.region_override)
 
     def search_asin(self, input):
@@ -116,17 +140,10 @@ class SearchTool:
 
 
 class AlbumSearchTool(SearchTool):
-    def build_url(self):
+    def build_search_args(self):
         """
-            Generates the URL string with search paramaters for API call.
+            Builds the search arguments for the API call.
         """
-
-        # Pre-process title. If ASIN is found, return the URL
-        pre_process = self.pre_process_title()
-        if pre_process:
-            return pre_process
-
-        # Regular search
         # If search is not an ASIN, use the album name
         album_param = 'title=' + urllib.quote(self.normalizedName)
 
@@ -137,14 +154,9 @@ class AlbumSearchTool(SearchTool):
             # Use keyword search to supplement missing author
             album_param = 'keywords=' + urllib.quote(self.normalizedName)
             artist_param = ''
-
-        # Setup region helper to get search URL
-        region_helper = RegionTool(
-            content_type=self.content_type, query=(album_param + artist_param), region=self.region_override)
-
-        search_url = region_helper.get_api_search_url()
-        self.log_search_url(search_url)
-        return search_url
+        # Combine params
+        query = (album_param + artist_param)
+        return query
 
     def check_if_preorder(self, book_date):
         current_date = (date.today())
@@ -286,30 +298,20 @@ class AlbumSearchTool(SearchTool):
 
 
 class ArtistSearchTool(SearchTool):
-    def build_url(self):
+    def build_search_args(self):
         """
-            Generates the URL string with search paramaters for API call.
+            Builds the search query for the API.
         """
-
-        # Pre-process title. If ASIN is found, return the URL
-        pre_process = self.pre_process_title()
-        if pre_process:
-            return pre_process
-
         modified_artist_name = self.cleanup_author_name(self.media.artist)
-        artist_param = 'name=' + urllib.quote(modified_artist_name)
-
-        # Setup region helper to get search URL
-        region_helper = RegionTool(
-            content_type=self.content_type, query=artist_param, region=self.region_override)
-
-        # Get search URL
-        search_url = region_helper.get_search_url()
-        self.log_search_url(search_url)
-        return search_url
+        query = 'name=' + urllib.quote(modified_artist_name)
+        # Set param
+        return query
 
     def cleanup_author_name(self, name):
         log.debug('Artist name before cleanup: ' + name)
+
+        # Remove brackets and text inside
+        name = re.sub(r'\[[^"]*\]', '', name)
         # Remove certain strings, such as titles
         str_to_remove = [
             'Dr.',

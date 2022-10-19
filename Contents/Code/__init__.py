@@ -175,7 +175,8 @@ class AudiobookArtist(Agent.Artist):
         """
             Builds URL then calls API, returns the JSON to helper function.
         """
-        search_url = helper.build_url()
+        query = helper.build_search_args()
+        search_url = helper.build_url(query)
         request = str(make_request(search_url))
         response = json_decode(request)
         # When using asin match, put it into array
@@ -432,7 +433,8 @@ class AudiobookAlbum(Agent.Album):
         """
             Builds URL then calls API, returns the JSON to helper function.
         """
-        search_url = helper.build_url()
+        query = helper.build_search_args()
+        search_url = helper.build_url(query)
         request = str(make_request(search_url))
         response = json_decode(request)
         results_list = helper.parse_api_response(response)
