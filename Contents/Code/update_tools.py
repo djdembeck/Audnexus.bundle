@@ -247,7 +247,6 @@ class TagTool:
         """
         contributor_regex = '.+?(?= -)'
         if not self.helper.metadata.moods or self.helper.force:
-            self.helper.metadata.moods.clear()
             # Loop through authors to check if it has contributor wording
             for author in self.helper.author:
                 if not re.match(contributor_regex, author['name']):

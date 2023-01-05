@@ -496,6 +496,10 @@ class AudiobookAlbum(Agent.Album):
         tagger.add_genres()
         # Narrators.
         tagger.add_narrators_to_styles()
+
+        # Moods:
+        if helper.force:
+            helper.metadata.moods.clear()
         # Authors.
         if Prefs['store_author_as_mood']:
             tagger.add_authors_to_moods()
