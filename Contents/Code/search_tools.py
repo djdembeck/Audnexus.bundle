@@ -121,7 +121,6 @@ class SearchTool:
 
         # Normalize name
         if self.content_type == 'books':
-            self.normalize_name()
             asin_search_title = self.normalizedName
 
         # ASIN override
@@ -144,7 +143,9 @@ class AlbumSearchTool(SearchTool):
         """
             Builds the search arguments for the API call.
         """
-        # If search is not an ASIN, use the album name
+        # First, normalize the name
+        self.normalize_name()
+        # Album title query
         album_param = 'title=' + urllib.quote(self.normalizedName)
 
         # Fix match/manual search doesn't provide author
