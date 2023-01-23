@@ -124,6 +124,69 @@ class UpdateTool:
 
 
 class AlbumUpdateTool(UpdateTool):
+    def set_date(self):
+        """
+            Sets the date.
+        """
+        if self.date is not None:
+            if not self.metadata.originally_available_at or self.force:
+                self.metadata.originally_available_at = self.date
+
+    def set_rating(self):
+        """
+            Sets the rating.
+        """
+        # We always want to refresh the rating
+        if self.rating:
+            self.metadata.rating = float(self.rating) * 2
+
+    def set_summary(self):
+        """
+            Sets the summary.
+        """
+        if not self.metadata.summary or self.force:
+            self.metadata.summary = self.synopsis
+
+    def set_studio(self):
+        """
+            Sets the studio.
+        """
+        if not self.metadata.studio or self.force:
+            self.metadata.studio = self.studio
+
+    def set_sort_title(self):
+        """
+            Sets the sort title.
+        """
+        # Add series/volume to sort title where possible.
+        series_with_volume = ''
+        if self.series and self.volume:
+            series_with_volume = self.series + ', ' + self.volume
+        # Only include subtitle in sort if not in a series
+        if not self.volume:
+            self.title = self.metadata.title
+        if not self.metadata.title_sort or self.force:
+            self.metadata.title_sort = ' - '.join(
+                filter(
+                    None, [(series_with_volume), self.title]
+                )
+            )
+
+    def set_title(self):
+        """
+            Sets the title.
+        """
+        # If the `simplify_title` option is selected, don't append subtitle
+        # and remove extra endings on the title
+        if self.prefs['simplify_title']:
+            album_title = self.simplify_title()
+        elif self.subtitle:
+            album_title = self.title + ': ' + self.subtitle
+        else:
+            album_title = self.title
+        if not self.metadata.title or self.force:
+            self.metadata.title = album_title
+
     def parse_api_response(self, response):
         """
             Parses keys from API into helper variables if they exist.

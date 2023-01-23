@@ -488,9 +488,7 @@ class AudiobookAlbum(Agent.Album):
 
     def compile_metadata(self, helper):
         # Date.
-        if helper.date is not None:
-            if not helper.metadata.originally_available_at or helper.force:
-                helper.metadata.originally_available_at = helper.date
+        helper.set_date()
         tagger = TagTool(helper, Prefs)
         # Genres.
         tagger.add_genres()
@@ -505,39 +503,16 @@ class AudiobookAlbum(Agent.Album):
             tagger.add_authors_to_moods()
         # Series.
         tagger.add_series_to_moods()
-
-        # If the `simplify_title` option is selected, don't append subtitle
-        # and remove extra endings on the title
-        if Prefs['simplify_title']:
-            album_title = helper.simplify_title()
-        elif helper.subtitle:
-            album_title = helper.title + ': ' + helper.subtitle
-        else:
-            album_title = helper.title
         # Title.
-        if not helper.metadata.title or helper.force:
-            helper.metadata.title = album_title
+        helper.set_title()
         # Sort Title.
-        # Add series/volume to sort title where possible.
-        series_with_volume = ''
-        if helper.series and helper.volume:
-            series_with_volume = helper.series + ', ' + helper.volume
-        # Only include subtitle in sort if not in a series
-        if not helper.volume:
-            helper.title = album_title
-        if not helper.metadata.title_sort or helper.force:
-            helper.metadata.title_sort = ' - '.join(
-                filter(
-                    None, [(series_with_volume), helper.title]
-                )
-            )
+        helper.set_sort_title()
         # Studio.
-        if not helper.metadata.studio or helper.force:
-            helper.metadata.studio = helper.studio
+        helper.set_studio()
         # Summary.
-        if not helper.metadata.summary or helper.force:
-            helper.metadata.summary = helper.synopsis
+        helper.set_summary()
         # Thumb.
+        # Kept here because of Proxy
         if helper.thumb:
             if helper.thumb not in helper.metadata.posters or helper.force:
                 helper.metadata.posters[helper.thumb] = Proxy.Media(
@@ -546,10 +521,9 @@ class AudiobookAlbum(Agent.Album):
                 # Re-prioritize the poster to the first position
                 helper.metadata.posters.validate_keys([helper.thumb])
         # Rating.
-        # We always want to refresh the rating
-        if helper.rating:
-            helper.metadata.rating = float(helper.rating) * 2
+        helper.set_rating()
 
+        # Log the resulting metadata
         helper.log_update_metadata()
 
     def getDateFromString(self, string):

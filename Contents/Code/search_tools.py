@@ -485,6 +485,38 @@ class ScoreTool:
             lambda x, y: x + y, numberlist, 0
         )
 
+    def score_create_result(self, score):
+        data_to_log = []
+        plex_score_dict = {}
+
+        # Go through all the keys for the result and log as we go
+        if self.asin:
+            plex_score_dict['id'] = self.asin
+            data_to_log.append({'ASIN is': self.asin})
+        if self.author:
+            plex_score_dict['author'] = self.author
+            data_to_log.append({'Author is': self.author})
+        if self.date:
+            plex_score_dict['date'] = self.date
+            data_to_log.append({'Date is': self.date})
+        if self.narrator:
+            plex_score_dict['narrator'] = self.narrator
+            data_to_log.append({'Narrator is': self.narrator})
+        if self.region:
+            plex_score_dict['region'] = self.region
+            data_to_log.append({'Region is': self.region})
+        if score:
+            plex_score_dict['score'] = score
+            data_to_log.append({'Score is': str(score)})
+        if self.title:
+            plex_score_dict['title'] = self.title
+            data_to_log.append({'Title is': self.title})
+        if self.year:
+            plex_score_dict['year'] = self.year
+        
+        log.metadata(data_to_log, log_level="info")
+        return plex_score_dict
+
     def score_result(self):
         # Array to hold score points for processing
         all_scores = []
@@ -510,34 +542,9 @@ class ScoreTool:
         score = self.INITIAL_SCORE - self.sum_scores(all_scores) - self.index
 
         log.info("Result #" + str(self.index + 1))
-        # Log basic metadata
-        data_to_log = []
-        plex_score_dict = {}
-        if self.asin:
-            plex_score_dict['id'] = self.asin
-            data_to_log.append({'ASIN is': self.asin})
-        if self.author:
-            plex_score_dict['author'] = self.author
-            data_to_log.append({'Author is': self.author})
-        if self.date:
-            plex_score_dict['date'] = self.date
-            data_to_log.append({'Date is': self.date})
-        if self.narrator:
-            plex_score_dict['narrator'] = self.narrator
-            data_to_log.append({'Narrator is': self.narrator})
-        if self.region:
-            plex_score_dict['region'] = self.region
-            data_to_log.append({'Region is': self.region})
-        if score:
-            plex_score_dict['score'] = score
-            data_to_log.append({'Score is': str(score)})
-        if self.title:
-            plex_score_dict['title'] = self.title
-            data_to_log.append({'Title is': self.title})
-        if self.year:
-            plex_score_dict['year'] = self.year
 
-        log.metadata(data_to_log, log_level="info")
+        # Create result dict
+        plex_score_dict = self.score_create_result(score)
 
         if score >= self.IGNORE_SCORE:
             self.info.append(plex_score_dict)
