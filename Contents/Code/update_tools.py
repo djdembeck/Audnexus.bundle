@@ -35,29 +35,28 @@ class UpdateTool:
         # Start an array with common metadata
         data_to_log = [{'ASIN': self.metadata.id}]
 
-        # Book metadata
-        book_data_to_log = [
-            {'Book poster URL': self.thumb},
-            {'Book publisher': self.metadata.studio},
-            {'Book release date': str(self.metadata.originally_available_at)},
-            {'Book sort title': self.metadata.title_sort},
-            {'Book summary': self.metadata.summary},
-            {'Book title': self.metadata.title},
-        ]
-
-        # Author metadata
-        author_data_to_log = [
-            {'Author bio': self.metadata.summary},
-            {'Author name': self.metadata.title},
-            {'Author poster URL': self.thumb},
-            {'Author sort name': self.metadata.title_sort},
-        ]
-
         # Determine which metadata to log
-        if self.content_type == 'book':
-            data_to_log.extend(book_data_to_log)
-        elif self.content_type == 'author':
-            data_to_log.extend(author_data_to_log)
+        if self.content_type == 'books':
+            data_to_log.extend(
+                [
+                    {'Book poster URL': self.thumb},
+                    {'Book publisher': self.metadata.studio},
+                    {'Book release date': str(
+                        self.metadata.originally_available_at)},
+                    {'Book sort title': self.metadata.title_sort},
+                    {'Book summary': self.metadata.summary},
+                    {'Book title': self.metadata.title},
+                ]
+            )
+        elif self.content_type == 'authors':
+            data_to_log.extend(
+                [
+                    {'Author bio': self.metadata.summary},
+                    {'Author name': self.metadata.title},
+                    {'Author poster URL': self.thumb},
+                    {'Author sort name': self.metadata.title_sort},
+                ]
+            )
 
         return data_to_log
 
