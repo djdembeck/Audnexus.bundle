@@ -43,6 +43,9 @@ class Logging:
             return Log.Error(message, *args)
 
     def log_output(self, key, val, log_level):
+        """
+            Logs key/value pair with passed log level.
+        """
         output = "{key:<20}{val}".format(
             key=key,
             val=val
@@ -56,8 +59,11 @@ class Logging:
     # Default level is info
     # Set debug by calling (msg='sometext', log_level='debug')
 
-    # Prints a bunch of divider chars like ---
     def separator(self, msg=None, log_level="info"):
+        """
+            Prints a bunch of divider chars like ---,
+            with optional message.
+        """
         divider = "-" * 35
         output = divider + divider
         # Override output with message if passed
@@ -68,8 +74,10 @@ class Logging:
             return self.debug(output)
         return self.info(output)
 
-    # Loops through array of dictionaries and logs them
     def metadata(self, dict_arr, log_level="info"):
+        """
+            Logs key/value pairs from array of dictionaries.
+        """
         # Loop through dicts in array
         for log_type in dict_arr:
             # Loop through each key/value
@@ -78,6 +86,10 @@ class Logging:
                     self.log_output(key, val, log_level)
 
     def metadata_arrs(self, dict_arr, log_level="info"):
+        """
+            Logs key/value pairs from array of dictionaries,
+            where value is an array.
+        """
         # Loop through dicts in array
         for log_type in dict_arr:
             # Loop through each key/value

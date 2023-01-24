@@ -77,6 +77,9 @@ class SearchTool:
         return string
 
     def log_search_url(self, search_url):
+        """
+            Logs the search URL.
+        """
         log.debug('Search URL: %s', search_url)
 
     def override_with_asin(self, match_asin, region=None):
@@ -130,10 +133,16 @@ class SearchTool:
             return self.override_with_asin(match_asin, self.region_override)
 
     def search_asin(self, input):
+        """
+            Searches for ASIN in a string.
+        """
         if input:
             return re.search(asin_regex, urllib.unquote(input).decode('utf8'))
 
     def search_region(self, input):
+        """
+            Searches for region in a string.
+        """
         if input:
             return re.search(region_regex, urllib.unquote(input).decode('utf8'))
 
@@ -181,16 +190,23 @@ class AlbumSearchTool(SearchTool):
         return query
 
     def check_if_preorder(self, book_date):
+        """
+            Checks if the book is a preorder.
+            If so, it is excluded from the search.
+        """
         current_date = (date.today())
         if book_date > current_date:
             log.info("Excluding pre-order book")
             return True
 
     def name_to_initials(self, input_name):
+        """
+            Converts a name to initials.
+            Example: 'Arthur Conan Doyle' -> 'A.C.Doyle'
+        """
         # Shorten input_name by splitting on whitespaces
         # Only the surname stays as whole, the rest gets truncated
         # and merged with dots.
-        # Example: 'Arthur Conan Doyle' -> 'A.C.Doyle'
         name_parts = self.clear_contributor_text(input_name).split()
 
         # Check if prename and surname exist, otherwise exit
@@ -262,6 +278,9 @@ class AlbumSearchTool(SearchTool):
         return search_results
 
     def pre_search_logging(self):
+        """
+            Logs basic metadata before search.
+        """
         log.separator(msg='ALBUM SEARCH', log_level="info")
         # Log basic metadata
         data_to_log = [
@@ -312,6 +331,10 @@ class ArtistSearchTool(SearchTool):
         return query
 
     def cleanup_author_name(self, name):
+        """
+            Cleans up the author name by removing
+            unwanted characters and words.
+        """
         log.debug('Artist name before cleanup: ' + name)
 
         # Remove brackets and text inside
@@ -343,6 +366,10 @@ class ArtistSearchTool(SearchTool):
         return name
 
     def find_non_contributor(self, author_array):
+        """
+            Finds the first author in the list
+            that is not a contributor.
+        """
         # Go through list of artists until we find a non contributor
         for i, r in enumerate(author_array):
             if self.clear_contributor_text(r) != r:
@@ -367,6 +394,9 @@ class ArtistSearchTool(SearchTool):
             return
 
     def handle_multi_artist(self):
+        """
+            Handles multi-artist lists.
+        """
         author_array = self.media.artist.split(', ')
         if len(author_array) > 1:
             self.find_non_contributor(author_array)
@@ -451,6 +481,10 @@ class ScoreTool:
         self.year = year
 
     def reduce_string(self, string):
+        """
+            Reduces a string to lowercase and removes
+            punctuation and spaces.
+        """
         normalized = string \
             .lower() \
             .replace('-', '') \
@@ -460,6 +494,9 @@ class ScoreTool:
         return normalized
 
     def run_score_author(self):
+        """
+            Scores an author result.
+        """
         self.asin = self.result_dict['asin']
         self.author = self.result_dict['name']
         self.authors_concat = self.author
@@ -471,6 +508,9 @@ class ScoreTool:
         return self.score_result()
 
     def run_score_book(self):
+        """
+            Scores a book result.
+        """
         self.asin = self.result_dict['asin']
         self.authors_concat = ', '.join(
             author['name'] for author in self.result_dict['author']
@@ -484,12 +524,19 @@ class ScoreTool:
         return self.score_result()
 
     def sum_scores(self, numberlist):
+        """
+            Sums a list of numbers.
+        """
         # Because builtin sum() isn't available
         return reduce(
             lambda x, y: x + y, numberlist, 0
         )
 
     def score_create_result(self, score):
+        """
+            Creates a result dict for the score.
+            Logs the score and the data used to calculate it.
+        """
         data_to_log = []
         plex_score_dict = {}
 
@@ -522,6 +569,9 @@ class ScoreTool:
         return plex_score_dict
 
     def score_result(self):
+        """
+            Scores a result.
+        """
         # Array to hold score points for processing
         all_scores = []
 

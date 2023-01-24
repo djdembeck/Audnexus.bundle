@@ -32,6 +32,9 @@ class UpdateTool:
         return update_url
 
     def collect_metadata_to_log(self):
+        """
+            Collects the metadata to log.
+        """
         # Start an array with common metadata
         data_to_log = [{'ASIN': self.metadata.id}]
 
@@ -61,6 +64,9 @@ class UpdateTool:
         return data_to_log
 
     def collect_metadata_arrs_to_log(self):
+        """
+            Collects the metadata arrays to log.
+        """
         # Start an array with common metadata
         multi_arr = [{'Genres': self.metadata.genres}]
 
@@ -101,8 +107,10 @@ class UpdateTool:
         # Set region and ASIN
         return region
 
-    # Writes metadata information to log.
     def log_update_metadata(self):
+        """
+            Writes metadata information to log.
+        """
         # Send a separator to the log
         log.separator(
             msg=(
@@ -274,6 +282,9 @@ class AlbumUpdateTool(UpdateTool):
         return album_title
 
     def volume_prefix(self, string):
+        """
+            Prefixes volume number with 'Book' if it doesn't exist.
+        """
         book_regex = '(Book ?(\d*\.)?\d+[+-]?[\d]?)'
         if not re.match(book_regex, string):
             prefixed_string = ('Book ' + string)

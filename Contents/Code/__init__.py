@@ -50,6 +50,9 @@ class AudiobookArtist(Agent.Artist):
     prev_search_provider = 0
 
     def search(self, results, media, lang, manual):
+        """
+            Search for artist metadata.
+        """
         # Instantiate search helper
         search_helper = ArtistSearchTool(
             'authors', lang, manual, media, Prefs, results)
@@ -130,6 +133,9 @@ class AudiobookArtist(Agent.Artist):
                 break
 
     def update(self, metadata, media, lang, force):
+        """
+            Update artist metadata.
+        """
         log.separator(
             msg=(
                 "UPDATING: " + media.title + (
@@ -188,6 +194,9 @@ class AudiobookArtist(Agent.Artist):
         return results_list
 
     def process_results(self, helper, result):
+        """
+            Process the results from the API call.
+        """
         # Walk the found items and gather extended information
         info = []
 
@@ -221,6 +230,9 @@ class AudiobookArtist(Agent.Artist):
         helper.parse_api_response(response)
 
     def compile_metadata(self, helper):
+        """
+            Compiles the metadata for the artist.
+        """
         # Description.
         helper.set_metadata_description()
         # Tags.
@@ -257,6 +269,9 @@ class AudiobookAlbum(Agent.Album):
     prev_search_provider = 0
 
     def search(self, results, media, lang, manual):
+        """
+            Search for an album.
+        """
         # Instantiate search helper
         search_helper = AlbumSearchTool(
             'books', lang, manual, media, Prefs, results)
@@ -366,6 +381,9 @@ class AudiobookAlbum(Agent.Album):
                 break
 
     def update(self, metadata, media, lang, force):
+        """
+            Update an album.
+        """
         log.separator(
             msg=(
                 "UPDATING: " + media.title + (
@@ -419,6 +437,9 @@ class AudiobookAlbum(Agent.Album):
         return results_list
 
     def process_results(self, helper, result):
+        """
+            Process the results from the API call.
+        """
         # Walk the found items and gather extended information
         info = []
 
@@ -465,6 +486,9 @@ class AudiobookAlbum(Agent.Album):
         helper.date = self.getDateFromString(helper.date)
 
     def compile_metadata(self, helper):
+        """
+            Compiles the metadata for the book.
+        """
         # Date.
         helper.set_metadata_date()
         # Tags.
@@ -496,6 +520,9 @@ class AudiobookAlbum(Agent.Album):
         helper.log_update_metadata()
 
     def getDateFromString(self, string):
+        """
+            Converts a string to a date object.
+        """
         try:
             return Datetime.ParseDate(string).date()
         except AttributeError:
@@ -512,6 +539,9 @@ class AudiobookAlbum(Agent.Album):
 
 # Common helpers
 def json_decode(output):
+    """
+        Decodes JSON output.
+    """
     try:
         return json.loads(output, encoding="utf-8")
     except AttributeError:
