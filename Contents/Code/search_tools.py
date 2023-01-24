@@ -513,7 +513,7 @@ class ScoreTool:
             data_to_log.append({'Title is': self.title})
         if self.year:
             plex_score_dict['year'] = self.year
-        
+
         log.metadata(data_to_log, log_level="info")
         return plex_score_dict
 

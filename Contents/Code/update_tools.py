@@ -342,6 +342,7 @@ class ArtistUpdateTool(UpdateTool):
         if not self.metadata.title or self.force:
             self.metadata.title = self.name
 
+
 class TagTool:
     def __init__(self, helper, Prefs):
         self.helper = helper
