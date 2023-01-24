@@ -51,7 +51,27 @@ class AudiobookArtist(Agent.Artist):
 
     def search(self, results, media, lang, manual):
         # Instantiate search helper
-        search_helper = ArtistSearchTool(lang, manual, media, results)
+        search_helper = ArtistSearchTool(
+            'authors', lang, manual, media, Prefs, results)
+
+        # Check if we can quick match based on asin
+        quick_match_asin = search_helper.check_for_asin()
+
+        if quick_match_asin:
+            results.Append(
+                MetadataSearchResult(
+                    id=quick_match_asin,
+                    lang=lang,
+                    name=quick_match_asin,
+                    score=100,
+                    year=1969
+                )
+            )
+            log.info(
+                'Using quick match based on asin: '
+                '%s' % quick_match_asin
+            )
+            return
 
         # Validate author name
         search_helper.validate_author_name()
@@ -61,7 +81,7 @@ class AudiobookArtist(Agent.Artist):
             return
 
         search_helper.media.artist = String.StripDiacritics(
-                search_helper.media.artist
+            search_helper.media.artist
         )
 
         # Call search API
@@ -120,7 +140,8 @@ class AudiobookArtist(Agent.Artist):
         )
 
         # Instantiate update helper
-        update_helper = ArtistUpdateTool(force, lang, media, metadata)
+        update_helper = ArtistUpdateTool(
+            'authors', force, lang, media, metadata, Prefs)
 
         self.call_item_api(update_helper)
 
@@ -154,7 +175,8 @@ class AudiobookArtist(Agent.Artist):
         """
             Builds URL then calls API, returns the JSON to helper function.
         """
-        search_url = helper.build_url()
+        query = helper.build_search_args()
+        search_url = helper.build_url(query)
         request = str(make_request(search_url))
         response = json_decode(request)
         # When using asin match, put it into array
@@ -193,9 +215,8 @@ class AudiobookArtist(Agent.Artist):
             Calls Audnexus API to get author details,
             then calls helper to parse those details.
         """
-        request = str(make_request(
-            helper.UPDATE_URL + helper.metadata.id
-        ))
+        update_url = helper.build_url()
+        request = str(make_request(update_url))
         response = json_decode(request)
         helper.parse_api_response(response)
 
@@ -238,7 +259,7 @@ class AudiobookArtist(Agent.Artist):
                     make_request(helper.thumb), sort_order=0
                 )
 
-        helper.writeInfo()
+        helper.log_update_metadata()
 
     def hasProxy(self):
         return Prefs['imageproxyurl'] is not None
@@ -259,24 +280,14 @@ class AudiobookAlbum(Agent.Album):
 
     def search(self, results, media, lang, manual):
         # Instantiate search helper
-        search_helper = AlbumSearchTool(lang, manual, media, results)
+        search_helper = AlbumSearchTool(
+            'books', lang, manual, media, Prefs, results)
 
         pre_check = search_helper.pre_search_logging()
         # Purposefully terminate search if it's bad
         if not pre_check:
             log.debug("Didn't pass pre-check")
             return
-
-        # Run helper before passing to AlbumSearchTool
-        normalizedName = String.StripDiacritics(
-            search_helper.media.album
-        )
-
-        # Fallback to title if album is empty or literal "None"
-        if not normalizedName or normalizedName == "None":
-            normalizedName = String.StripDiacritics(
-                search_helper.media.title
-            )
 
         # Check if we can quick match based on asin
         quick_match_asin = search_helper.check_for_asin()
@@ -291,13 +302,11 @@ class AudiobookAlbum(Agent.Album):
                 )
             )
             log.info(
-                    'Using quick match based on asin: '
-                    '%s' % quick_match_asin
-                )
+                'Using quick match based on asin: '
+                '%s' % quick_match_asin
+            )
             return
 
-        # Strip title of things like unabridged and spaces
-        search_helper.strip_title(normalizedName)
         # # Validate author name
         search_helper.validate_author_name()
 
@@ -308,13 +317,13 @@ class AudiobookAlbum(Agent.Album):
         if not result:
             log.warn(
                 'No results found for query "%s"',
-                normalizedName
+                search_helper.normalizedName
             )
             return
         log.debug(
             'Found %s result(s) for query "%s"',
             len(result),
-            normalizedName
+            search_helper.normalizedName
         )
 
         info = self.process_results(search_helper, result)
@@ -389,7 +398,8 @@ class AudiobookAlbum(Agent.Album):
         )
 
         # Instantiate update helper
-        update_helper = AlbumUpdateTool(force, lang, media, metadata)
+        update_helper = AlbumUpdateTool(
+            'books', force, lang, media, metadata, Prefs)
 
         self.call_item_api(update_helper)
 
@@ -423,7 +433,8 @@ class AudiobookAlbum(Agent.Album):
         """
             Builds URL then calls API, returns the JSON to helper function.
         """
-        search_url = helper.build_url()
+        query = helper.build_search_args()
+        search_url = helper.build_url(query)
         request = str(make_request(search_url))
         response = json_decode(request)
         results_list = helper.parse_api_response(response)
@@ -467,9 +478,8 @@ class AudiobookAlbum(Agent.Album):
             Calls Audnexus API to get book details,
             then calls helper to parse those details.
         """
-        request = str(make_request(
-            helper.UPDATE_URL + helper.metadata.id
-        ))
+        update_url = helper.build_url()
+        request = str(make_request(update_url))
         response = json_decode(request)
         helper.parse_api_response(response)
 
@@ -478,52 +488,31 @@ class AudiobookAlbum(Agent.Album):
 
     def compile_metadata(self, helper):
         # Date.
-        if helper.date is not None:
-            if not helper.metadata.originally_available_at or helper.force:
-                helper.metadata.originally_available_at = helper.date
+        helper.set_date()
         tagger = TagTool(helper, Prefs)
         # Genres.
         tagger.add_genres()
         # Narrators.
         tagger.add_narrators_to_styles()
+
+        # Moods:
+        if helper.force:
+            helper.metadata.moods.clear()
         # Authors.
         if Prefs['store_author_as_mood']:
             tagger.add_authors_to_moods()
         # Series.
         tagger.add_series_to_moods()
-
-        # If the `simplify_title` option is selected, don't append subtitle
-        # and remove extra endings on the title
-        if Prefs['simplify_title']:
-            album_title = helper.simplify_title()
-        elif helper.subtitle:
-            album_title = helper.title + ': ' + helper.subtitle
-        else:
-            album_title = helper.title
         # Title.
-        if not helper.metadata.title or helper.force:
-            helper.metadata.title = album_title
+        helper.set_title()
         # Sort Title.
-        # Add series/volume to sort title where possible.
-        series_with_volume = ''
-        if helper.series and helper.volume:
-            series_with_volume = helper.series + ', ' + helper.volume
-        # Only include subtitle in sort if not in a series
-        if not helper.volume:
-            helper.title = album_title
-        if not helper.metadata.title_sort or helper.force:
-            helper.metadata.title_sort = ' - '.join(
-                filter(
-                    None, [(series_with_volume), helper.title]
-                )
-            )
+        helper.set_sort_title()
         # Studio.
-        if not helper.metadata.studio or helper.force:
-            helper.metadata.studio = helper.studio
+        helper.set_studio()
         # Summary.
-        if not helper.metadata.summary or helper.force:
-            helper.metadata.summary = helper.synopsis
+        helper.set_summary()
         # Thumb.
+        # Kept here because of Proxy
         if helper.thumb:
             if helper.thumb not in helper.metadata.posters or helper.force:
                 helper.metadata.posters[helper.thumb] = Proxy.Media(
@@ -532,11 +521,10 @@ class AudiobookAlbum(Agent.Album):
                 # Re-prioritize the poster to the first position
                 helper.metadata.posters.validate_keys([helper.thumb])
         # Rating.
-        # We always want to refresh the rating
-        if helper.rating:
-            helper.metadata.rating = float(helper.rating) * 2
+        helper.set_rating()
 
-        helper.writeInfo()
+        # Log the resulting metadata
+        helper.log_update_metadata()
 
     def getDateFromString(self, string):
         try:
@@ -566,17 +554,21 @@ def make_request(url):
         Makes and returns an HTTP request.
         Retries 4 times, increasing  time between each retry.
     """
-    sleep_time = 2
+    sleep_time = 1
     num_retries = 4
     for x in range(0, num_retries):
         try:
-            make_request = HTTP.Request(url)
+            make_request = HTTP.Request(url, timeout=90, sleep=sleep_time)
             str_error = None
+            ssl_error = None
         except Exception as str_error:
             log.error("Failed http request attempt #" + x + ": " + url)
             log.error(str_error)
+        except SSLError as ssl_error:
+            log.error("Failed http request attempt #" + x + ": " + url)
+            log.error(ssl_error)
 
-        if str_error:
+        if str_error or ssl_error:
             sleep(sleep_time)
             sleep_time *= x
         else:

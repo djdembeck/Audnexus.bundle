@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.0.0](https://github.com/djdembeck/Audnexus.bundle/compare/v0.4.1...v1.0.0) (2023-01-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* multi region (#66)
+
+### Features
+
+* multi region ([#66](https://github.com/djdembeck/Audnexus.bundle/issues/66)) ([c2b7fad](https://github.com/djdembeck/Audnexus.bundle/commit/c2b7fadc6fa0e3adea0d1c50a1c9e649efd73659)), closes [#51](https://github.com/djdembeck/Audnexus.bundle/issues/51)
+
+
+### Bug Fixes
+
+* :bug: `content_type` check was not plural, all data was trying to be collected into variable if unused ([f4e60fc](https://github.com/djdembeck/Audnexus.bundle/commit/f4e60fc3e382560028139e09274d1d069eabbc4f))
+* **album-search:** :bug: `normalizedName` was requested before being made available ([f2fb6d4](https://github.com/djdembeck/Audnexus.bundle/commit/f2fb6d4e0b2c16c40b93053ec49aaa73a8ed7227))
+* correctly clear authors when settings change ([9461d3f](https://github.com/djdembeck/Audnexus.bundle/commit/9461d3f3b20a8a7bd7df1a83836f143678073604)), closes [#71](https://github.com/djdembeck/Audnexus.bundle/issues/71)
+
 ### [0.4.1](https://github.com/djdembeck/Audnexus.bundle/compare/v0.4.0...v0.4.1) (2022-10-05)
 
 
