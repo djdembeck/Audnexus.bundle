@@ -137,6 +137,27 @@ class SearchTool:
         if input:
             return re.search(region_regex, urllib.unquote(input).decode('utf8'))
 
+    def validate_author_name(self):
+        """
+            Checks a list of known bad author names.
+            If matched, author name is set to None to prevent
+            it being used in search query.
+        """
+        if self.content_type == 'authors':
+            self.get_primary_author()
+
+        strings_to_check = [
+            "[Unknown Artist]"
+        ]
+        for test_name in strings_to_check:
+            if self.media.artist == test_name:
+                self.media.artist = None
+                log.info(
+                    "Artist name seems to be bad, "
+                    "not using it in search."
+                )
+                break
+
 
 class AlbumSearchTool(SearchTool):
     def build_search_args(self):
@@ -279,24 +300,6 @@ class AlbumSearchTool(SearchTool):
                 self.media.album = self.media.name
         return True
 
-    def validate_author_name(self):
-        """
-            Checks a list of known bad author names.
-            If matched, author name is set to None to prevent
-            it being used in search query.
-        """
-        strings_to_check = [
-            "[Unknown Artist]"
-        ]
-        for test_name in strings_to_check:
-            if self.media.artist == test_name:
-                self.media.artist = None
-                log.info(
-                    "Artist name seems to be bad, "
-                    "not using it in search."
-                )
-                break
-
 
 class ArtistSearchTool(SearchTool):
     def build_search_args(self):
@@ -339,6 +342,60 @@ class ArtistSearchTool(SearchTool):
         log.debug('Artist name after cleanup: ' + name)
         return name
 
+    def find_non_contributor(self, author_array):
+        # Go through list of artists until we find a non contributor
+        for i, r in enumerate(author_array):
+            if self.clear_contributor_text(r) != r:
+                log.debug('Author #' + str(i+1) + ' is a contributor')
+                # If all authors are contributors use the first
+                if i == len(author_array) - 1:
+                    log.debug(
+                        'All authors are contributors, using the first one'
+                    )
+                    self.media.artist = self.clear_contributor_text(
+                        author_array[0]
+                    )
+                    return
+                continue
+            log.info(
+                'Merging multi-author "' +
+                self.media.artist +
+                '" into top-level author "' +
+                r + '"'
+            )
+            self.media.artist = r
+            return
+
+    def handle_multi_artist(self):
+        author_array = self.media.artist.split(', ')
+        if len(author_array) > 1:
+            self.find_non_contributor(author_array)
+        else:
+            if (
+                self.clear_contributor_text(self.media.artist)
+                !=
+                self.media.artist
+            ):
+                log.debug('Stripped contributor tag from author')
+                self.media.artist = self.clear_contributor_text(
+                    self.media.artist
+                )
+
+    def get_primary_author(self):
+        """
+            Checks for combined authors
+            If matched, author name is set to None to prevent
+            it being used in search query.
+        """
+        self.set_media_artist()
+
+        # We need an author name to continue
+        if not self.media.artist:
+            return
+
+        # Handle multi-artist
+        self.handle_multi_artist()
+
     def parse_api_response(self, api_response):
         """
             Collects keys used for each item from API response,
@@ -359,67 +416,14 @@ class ArtistSearchTool(SearchTool):
                 )
         return search_results
 
-    def validate_author_name(self):
+    def set_media_artist(self):
         """
-            Checks for combined authors and a list of known bad author names.
-            If matched, author name is set to None to prevent
-            it being used in search query.
+            Sometimes artist isn't set but title is.
         """
-        # Sometimes artist isn't set but title is
-        if not self.media.artist:
-            if self.media.title:
-                self.media.artist = self.media.title
-            else:
-                log.error("No artist to validate")
-                return
-
-        author_array = self.media.artist.split(', ')
-        # Handle multi-artist
-        if len(author_array) > 1:
-            # Go through list of artists until we find a non contributor
-            for i, r in enumerate(author_array):
-                if self.clear_contributor_text(r) != r:
-                    log.debug('Author #' + str(i+1) + ' is a contributor')
-                    # If all authors are contributors use the first
-                    if i == len(author_array) - 1:
-                        log.debug(
-                            'All authors are contributors, using the first one'
-                        )
-                        self.media.artist = self.clear_contributor_text(
-                            author_array[0]
-                        )
-                        return
-                    continue
-                log.info(
-                    'Merging multi-author "' +
-                    self.media.artist +
-                    '" into top-level author "' +
-                    r + '"'
-                )
-                self.media.artist = r
-                return
+        if self.media.title:
+            self.media.artist = self.media.title
         else:
-            if (
-                self.clear_contributor_text(self.media.artist)
-                !=
-                self.media.artist
-            ):
-                log.debug('Stripped contributor tag from author')
-                self.media.artist = self.clear_contributor_text(
-                    self.media.artist
-                )
-
-        strings_to_check = [
-            "[Unknown Artist]"
-        ]
-        for test_name in strings_to_check:
-            if self.media.artist == test_name:
-                self.media.artist = None
-                log.info(
-                    "Artist name seems to be bad, "
-                    "not using it in search."
-                )
-                break
+            log.error("No artist to validate")
 
 
 class ScoreTool:

@@ -222,13 +222,13 @@ class AudiobookArtist(Agent.Artist):
 
     def compile_metadata(self, helper):
         # Description.
-        helper.set_description()
+        helper.set_metadata_description()
         # Tags.
-        helper.set_tags()
+        helper.set_metadata_tags()
         # Title.
-        helper.set_title()
+        helper.set_metadata_title()
         # Sort Title.
-        helper.set_sort_title()
+        helper.set_metadata_sort_title()
         # Thumb.
         # Kept here because of Proxy
         if helper.thumb:
@@ -466,20 +466,20 @@ class AudiobookAlbum(Agent.Album):
 
     def compile_metadata(self, helper):
         # Date.
-        helper.set_date()
+        helper.set_metadata_date()
         # Tags.
-        helper.set_tags()
+        helper.set_metadata_tags()
         # Moods:
         if helper.force:
             helper.metadata.moods.clear()
         # Title.
-        helper.set_title()
+        helper.set_metadata_title()
         # Sort Title.
-        helper.set_sort_title()
+        helper.set_metadata_sort_title()
         # Studio.
-        helper.set_studio()
+        helper.set_metadata_studio()
         # Summary.
-        helper.set_summary()
+        helper.set_metadata_summary()
         # Thumb.
         # Kept here because of Proxy
         if helper.thumb:
@@ -490,7 +490,7 @@ class AudiobookAlbum(Agent.Album):
                 # Re-prioritize the poster to the first position
                 helper.metadata.posters.validate_keys([helper.thumb])
         # Rating.
-        helper.set_rating()
+        helper.set_metadata_rating()
 
         # Log the resulting metadata
         helper.log_update_metadata()
