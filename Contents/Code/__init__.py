@@ -151,30 +151,6 @@ class AudiobookArtist(Agent.Artist):
 
         self.call_item_api(update_helper)
 
-        # cleanup description
-        update_helper.description = (
-            update_helper.description.replace("<i>", "")
-            .replace("</i>", "")
-            .replace("<em>", "")
-            .replace("</em>", "")
-            .replace("<u>", "")
-            .replace("</u>", "")
-            .replace("<b>", "")
-            .replace("</b>", "")
-            .replace("<strong>", "")
-            .replace("</strong>", "")
-            .replace("<ul>", "")
-            .replace("</ul>", "\n")
-            .replace("<ol>", "")
-            .replace("</ol>", "\n")
-            .replace("<li>", " • ")
-            .replace("</li>", "\n")
-            .replace("<br />", "")
-            .replace("<p>", "")
-            .replace("</p>", "\n")
-            .strip()
-        )
-
         self.compile_metadata(update_helper)
 
     def call_search_api(self, helper):
@@ -392,30 +368,6 @@ class AudiobookAlbum(Agent.Album):
             'books', force, lang, media, metadata, Prefs)
 
         self.call_item_api(update_helper)
-
-        # cleanup synopsis
-        update_helper.synopsis = (
-            update_helper.synopsis.replace("<i>", "")
-            .replace("</i>", "")
-            .replace("<em>", "")
-            .replace("</em>", "")
-            .replace("<u>", "")
-            .replace("</u>", "")
-            .replace("<b>", "")
-            .replace("</b>", "")
-            .replace("<strong>", "")
-            .replace("</strong>", "")
-            .replace("<ul>", "")
-            .replace("</ul>", "\n")
-            .replace("<ol>", "")
-            .replace("</ol>", "\n")
-            .replace("<li>", " • ")
-            .replace("</li>", "\n")
-            .replace("<br />", "")
-            .replace("<p>", "")
-            .replace("</p>", "\n")
-            .strip()
-        )
 
         self.compile_metadata(update_helper)
 

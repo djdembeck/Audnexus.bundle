@@ -31,6 +31,44 @@ class UpdateTool:
         log.debug('Update URL: ' + update_url)
         return update_url
 
+    def cleanup_html(self):
+        """
+            Cleans up HTML in either the description or synopsis.
+        """
+        html_tags = '<[^<]+?>'
+
+        # Clean up HTML in the description
+        if self.content_type == 'authors':
+            # First handle special cases
+            self.description = self.replace_html_special(self.description)
+            self.description = re.sub(
+                html_tags, '', self.description)
+        # Clean up HTML in the synopsis
+        if self.content_type == 'books':
+            # First handle special cases
+            self.synopsis = self.replace_html_special(self.synopsis)
+            self.synopsis = re.sub(
+                html_tags, '', self.synopsis)
+
+    def replace_html_special(self, input_html):
+        """
+            Replaces HTML lists with a bullet point.
+            Replaces HTML paragraphs with a newline.
+            Replaces HTML line breaks with a newline.
+        """
+        return (
+            input_html.replace("<ul>", "")
+            .replace("</ul>", "\n")
+            .replace("<ol>", "")
+            .replace("</ol>", "\n")
+            .replace("<li>", " • ")
+            .replace("</li>", "\n")
+            .replace("<br />", "")
+            .replace("<p>", "")
+            .replace("</p>", "\n")
+            .strip()
+        )
+
     def collect_metadata_to_log(self):
         """
             Collects the metadata to log.
@@ -206,6 +244,7 @@ class AlbumUpdateTool(UpdateTool):
             Sets the summary.
         """
         if not self.metadata.summary or self.force:
+            self.cleanup_html()
             self.metadata.summary = self.synopsis
 
     def set_metadata_studio(self):
@@ -313,6 +352,7 @@ class ArtistUpdateTool(UpdateTool):
             Set description of artist
         """
         if not self.metadata.summary or self.force:
+            self.cleanup_html()
             self.metadata.summary = self.description
 
     def set_empty_variables(self):
