@@ -251,12 +251,6 @@ class AudiobookArtist(Agent.Artist):
 
         helper.log_update_metadata()
 
-    def hasProxy(self):
-        return Prefs['imageproxyurl'] is not None
-
-    def makeProxyUrl(self, url, referer):
-        return Prefs['imageproxyurl'] + ('?url=%s&referer=%s' % (url, referer))
-
 
 class AudiobookAlbum(Agent.Album):
     name = 'Audnexus Agent'
@@ -530,14 +524,9 @@ class AudiobookAlbum(Agent.Album):
         except ValueError:
             return None
 
-    def hasProxy(self):
-        return Prefs['imageproxyurl'] is not None
-
-    def makeProxyUrl(self, url, referer):
-        return Prefs['imageproxyurl'] + ('?url=%s&referer=%s' % (url, referer))
-
 
 # Common helpers
+
 def json_decode(output):
     """
         Decodes JSON output.
