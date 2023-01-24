@@ -172,6 +172,22 @@ class AlbumUpdateTool(UpdateTool):
                 )
             )
 
+    def set_tags(self):
+        """
+            Set tags of artist
+        """
+        # Create tagger.
+        tagger = TagTool(self, self.prefs)
+        # Genres.
+        tagger.add_genres()
+        # Narrators.
+        tagger.add_narrators_to_styles()
+        # Authors.
+        if self.prefs['store_author_as_mood']:
+            tagger.add_authors_to_moods()
+        # Series.
+        tagger.add_series_to_moods()
+
     def set_title(self):
         """
             Sets the title.
@@ -277,6 +293,54 @@ class ArtistUpdateTool(UpdateTool):
         if 'image' in response:
             self.thumb = response['image']
 
+    def set_description(self):
+        """
+            Set description of artist
+        """
+        if not self.metadata.summary or self.force:
+            self.metadata.summary = self.description
+
+    def set_sort_title(self):
+        """
+            Set sort title of artist
+        """
+        if not self.metadata.title_sort or self.force:
+            if self.prefs['sort_author_by_last_name'] and not (
+                # Handle single word names
+                re.match(r'\A[\w-]+\Z', self.name)
+            ):
+                split_author_surname = re.match(
+                    '^(.+?).([^\s,]+)(,?.(?:[JS]r\.?|III?|IV))?$',
+                    self.name,
+                )
+                self.metadata.title_sort = ', '.join(
+                    filter(
+                        None,
+                        [
+                            (split_author_surname.group(2) + ', ' +
+                                split_author_surname.group(1)),
+                            split_author_surname.group(3)
+                        ]
+                    )
+                )
+            else:
+                self.metadata.title_sort = self.metadata.title
+
+    def set_tags(self):
+        """
+            Set tags of artist
+        """
+        # Create tagger.
+        tagger = TagTool(self, self.prefs)
+        # Genres.
+        tagger.add_genres()
+
+    def set_title(self):
+        """
+            Set title of artist
+        """
+        if not self.metadata.title or self.force:
+            self.metadata.title = self.name
 
 class TagTool:
     def __init__(self, helper, Prefs):

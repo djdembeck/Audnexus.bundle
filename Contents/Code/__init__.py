@@ -7,7 +7,7 @@ from _version import version
 from logging import Logging
 from search_tools import AlbumSearchTool, ArtistSearchTool, ScoreTool
 from time import sleep
-from update_tools import AlbumUpdateTool, ArtistUpdateTool, TagTool
+from update_tools import AlbumUpdateTool, ArtistUpdateTool
 
 VERSION_NO = version
 
@@ -222,37 +222,15 @@ class AudiobookArtist(Agent.Artist):
 
     def compile_metadata(self, helper):
         # Description.
-        if not helper.metadata.summary or helper.force:
-            helper.metadata.summary = helper.description
-        tagger = TagTool(helper, Prefs)
-        # Genres.
-        tagger.add_genres()
+        helper.set_description()
+        # Tags.
+        helper.set_tags()
         # Title.
-        if not helper.metadata.title or helper.force:
-            helper.metadata.title = helper.name
+        helper.set_title()
         # Sort Title.
-        if not helper.metadata.title_sort or helper.force:
-            if Prefs['sort_author_by_last_name'] and not (
-                # Handle single word names
-                re.match(r'\A[\w-]+\Z', helper.name)
-            ):
-                split_author_surname = re.match(
-                    '^(.+?).([^\s,]+)(,?.(?:[JS]r\.?|III?|IV))?$',
-                    helper.name,
-                )
-                helper.metadata.title_sort = ', '.join(
-                    filter(
-                        None,
-                        [
-                            (split_author_surname.group(2) + ', ' +
-                                split_author_surname.group(1)),
-                            split_author_surname.group(3)
-                        ]
-                    )
-                )
-            else:
-                helper.metadata.title_sort = helper.metadata.title
+        helper.set_sort_title()
         # Thumb.
+        # Kept here because of Proxy
         if helper.thumb:
             if helper.thumb not in helper.metadata.posters or helper.force:
                 helper.metadata.posters[helper.thumb] = Proxy.Media(
@@ -489,20 +467,11 @@ class AudiobookAlbum(Agent.Album):
     def compile_metadata(self, helper):
         # Date.
         helper.set_date()
-        tagger = TagTool(helper, Prefs)
-        # Genres.
-        tagger.add_genres()
-        # Narrators.
-        tagger.add_narrators_to_styles()
-
+        # Tags.
+        helper.set_tags()
         # Moods:
         if helper.force:
             helper.metadata.moods.clear()
-        # Authors.
-        if Prefs['store_author_as_mood']:
-            tagger.add_authors_to_moods()
-        # Series.
-        tagger.add_series_to_moods()
         # Title.
         helper.set_title()
         # Sort Title.
