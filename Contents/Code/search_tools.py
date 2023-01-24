@@ -578,9 +578,6 @@ class ScoreTool:
         """
         if self.helper.media.artist:
             scorebase3 = self.helper.media.artist
-            if not scorebase3:
-                log.warn('No artist found in file metadata')
-                return 20
             scorebase4 = author
             author_score = self.calculate_score(
                 self.reduce_string(scorebase3),
@@ -588,6 +585,9 @@ class ScoreTool:
             ) * 10
             log.debug("Score deduction from author: " + str(author_score))
             return author_score
+
+        log.warn('No artist found in file metadata')
+        return 20
 
     def score_language(self, language):
         """
