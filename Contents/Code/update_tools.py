@@ -280,7 +280,10 @@ class AlbumUpdateTool(UpdateTool):
 class ArtistUpdateTool(UpdateTool):
     def get_square_image(self, image_url):
         """
-            Get square image from Audible
+            Get square author photos from Audible
+
+            Crop each portrait photo to a square centered at the top,
+            and crop each landscape photo to a square at the horizontal center
         """
         try:
             image_file_dl = urllib.urlopen(image_url)
