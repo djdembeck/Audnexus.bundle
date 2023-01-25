@@ -2,6 +2,9 @@
 from logging import Logging
 from region_tools import RegionTool
 import re
+import struct
+import urllib
+import os
 
 # Setup logger
 log = Logging()
@@ -332,6 +335,76 @@ class AlbumUpdateTool(UpdateTool):
 
 
 class ArtistUpdateTool(UpdateTool):
+    def get_square_image(self, image_url):
+        """
+            Get square author photos from Audible
+
+            Crop each portrait photo to a square centered at the top,
+            and crop each landscape photo to a square at the horizontal center
+        """
+        try:
+            image_file_dl = urllib.urlopen(image_url)
+            image_file_dl_contents = image_file_dl.read()
+            image_file_dl.close()
+
+            image_file = os.tmpfile()
+            image_file.write(image_file_dl_contents)
+
+            image_file.seek(0)
+
+            head = image_file.read(24)
+            if len(head) != 24:
+                image_file.close()
+                return image_url
+
+            image_file.seek(0)  # Read 0xff next
+            size = 2
+            ftype = 0
+            while not 0xc0 <= ftype <= 0xcf:
+                image_file.seek(size, 1)
+                byte = image_file.read(1)
+                while ord(byte) == 0xff:
+                    byte = image_file.read(1)
+                ftype = ord(byte)
+                size = struct.unpack('>H', image_file.read(2))[0] - 2
+            # We are at a SOFn block
+            image_file.seek(1, 1)  # Skip `precision' byte.
+            height, width = struct.unpack('>HH', image_file.read(4))
+
+            image_file.close()
+
+            if (height > width):
+                # Return a portrait image centered at the top
+                w_str = str(width)
+                square_image_url = image_url.replace(
+                    '.jpg',
+                    '.__01_SX'+w_str+'_CR0,0,'+w_str+','+w_str+'__.jpg'
+                )
+                return square_image_url
+
+            if (width > height):
+                # Return a landscape image centered at the horizontal middle
+                h_str = str(height)
+                padding = str((width - height) / 2)
+                square_image_url = image_url.replace(
+                    '.jpg',
+                    '.__01_SY'+h_str+'_CR'+padding+',0,'+h_str+','+h_str+'__.jpg'
+                )
+                return square_image_url
+
+            return image_url
+
+        except Exception as err:
+            log.separator(
+                msg=(
+                    'Error getting square image for ' + self.media.title
+                ),
+                log_level="error"
+            )
+            log.error(err)
+        return image_url
+
+
     def parse_api_response(self, response):
         """
             Parses keys from API into helper variables if they exist.
@@ -345,7 +418,9 @@ class ArtistUpdateTool(UpdateTool):
         if 'name' in response:
             self.name = response['name']
         if 'image' in response:
-            self.thumb = response['image']
+            squared_image = self.get_square_image(response['image'])
+            log.debug('Square image: ' + squared_image)
+            self.thumb = squared_image
 
     def set_metadata_description(self):
         """
