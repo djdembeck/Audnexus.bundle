@@ -66,41 +66,74 @@ class RegionTool:
         self.content_type = content_type
 
     def get_region(self):
+        """
+            Returns the region code.
+        """
         return self.region
 
     def get_region_name(self):
+        """
+            Returns the region name.
+        """
         return available_regions[self.region]['name']
 
     # Audnexus
     def get_region_query(self):
+        """
+            Returns the region query string.
+        """
         return '?region=' + self.region
 
     def get_region_tld(self):
+        """
+            Returns the region TLD.
+        """
         return available_regions[self.region]['TLD']
 
     def get_content_type_url(self):
+        """
+            Returns the content type URL.
+        """
         return 'https://api.audnex.us' + '/' + self.content_type
 
     def get_search_url(self):
+        """
+            Returns the search URL.
+        """
         return self.get_content_type_url() + self.get_region_query() + '&' + self.query
 
     def get_id_url(self):
+        """
+            Returns the ID URL.
+        """
         return self.get_content_type_url() + '/' + self.id + self.get_region_query()
 
     def get_id_url_with_query(self):
+        """
+            Returns the ID URL with query.
+        """
         return self.get_content_type_url() + '/' + self.id + self.get_region_query() + '&' + self.query
 
     # Audible
     def get_api_region_url(self):
+        """
+            Returns the API region URL.
+        """
         return 'https://api.audible.{}'.format(
             available_regions[self.region]['TLD']
         )
 
     def get_api_params(self):
+        """
+            Returns the API parameters.
+        """
         return (
             '?response_groups=contributors,product_desc,product_attrs'
             '&num_results=25&products_sort_by=Relevance'
         )
 
     def get_api_search_url(self):
+        """
+            Returns the API search URL.
+        """
         return self.get_api_region_url() + '/' + '1.0/catalog/products' + self.get_api_params() + '&' + self.query

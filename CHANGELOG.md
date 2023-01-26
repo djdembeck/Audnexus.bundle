@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.1.0](https://github.com/djdembeck/Audnexus.bundle/compare/v1.0.0...v1.1.0) (2023-01-26)
+
+
+### Features
+
+* use centered images for authors ([#76](https://github.com/djdembeck/Audnexus.bundle/issues/76)) ([6c857ad](https://github.com/djdembeck/Audnexus.bundle/commit/6c857ad84d77c6aacbb08e8c30a06a154e970098))
+
+
+### Bug Fixes
+
+* **author-search:** bug fix unreachable code when scoring author ([92ec69b](https://github.com/djdembeck/Audnexus.bundle/commit/92ec69b262a4d0d1aef46dcb32fd682c4d1e1a55))
+
 ## [1.0.0](https://github.com/djdembeck/Audnexus.bundle/compare/v0.4.1...v1.0.0) (2023-01-24)
 
 

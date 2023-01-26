@@ -2,6 +2,9 @@
 from logging import Logging
 from region_tools import RegionTool
 import re
+import struct
+import urllib
+import os
 
 # Setup logger
 log = Logging()
@@ -31,7 +34,48 @@ class UpdateTool:
         log.debug('Update URL: ' + update_url)
         return update_url
 
+    def cleanup_html(self):
+        """
+            Cleans up HTML in either the description or synopsis.
+        """
+        html_tags = '<[^<]+?>'
+
+        # Clean up HTML in the description
+        if self.content_type == 'authors':
+            # First handle special cases
+            self.description = self.replace_html_special(self.description)
+            self.description = re.sub(
+                html_tags, '', self.description)
+        # Clean up HTML in the synopsis
+        if self.content_type == 'books':
+            # First handle special cases
+            self.synopsis = self.replace_html_special(self.synopsis)
+            self.synopsis = re.sub(
+                html_tags, '', self.synopsis)
+
+    def replace_html_special(self, input_html):
+        """
+            Replaces HTML lists with a bullet point.
+            Replaces HTML paragraphs with a newline.
+            Replaces HTML line breaks with a newline.
+        """
+        return (
+            input_html.replace("<ul>", "")
+            .replace("</ul>", "\n")
+            .replace("<ol>", "")
+            .replace("</ol>", "\n")
+            .replace("<li>", " • ")
+            .replace("</li>", "\n")
+            .replace("<br />", "")
+            .replace("<p>", "")
+            .replace("</p>", "\n")
+            .strip()
+        )
+
     def collect_metadata_to_log(self):
+        """
+            Collects the metadata to log.
+        """
         # Start an array with common metadata
         data_to_log = [{'ASIN': self.metadata.id}]
 
@@ -61,6 +105,9 @@ class UpdateTool:
         return data_to_log
 
     def collect_metadata_arrs_to_log(self):
+        """
+            Collects the metadata arrays to log.
+        """
         # Start an array with common metadata
         multi_arr = [{'Genres': self.metadata.genres}]
 
@@ -101,8 +148,10 @@ class UpdateTool:
         # Set region and ASIN
         return region
 
-    # Writes metadata information to log.
     def log_update_metadata(self):
+        """
+            Writes metadata information to log.
+        """
         # Send a separator to the log
         log.separator(
             msg=(
@@ -124,83 +173,11 @@ class UpdateTool:
 
 
 class AlbumUpdateTool(UpdateTool):
-    def set_date(self):
-        """
-            Sets the date.
-        """
-        if self.date is not None:
-            if not self.metadata.originally_available_at or self.force:
-                self.metadata.originally_available_at = self.date
-
-    def set_rating(self):
-        """
-            Sets the rating.
-        """
-        # We always want to refresh the rating
-        if self.rating:
-            self.metadata.rating = float(self.rating) * 2
-
-    def set_summary(self):
-        """
-            Sets the summary.
-        """
-        if not self.metadata.summary or self.force:
-            self.metadata.summary = self.synopsis
-
-    def set_studio(self):
-        """
-            Sets the studio.
-        """
-        if not self.metadata.studio or self.force:
-            self.metadata.studio = self.studio
-
-    def set_sort_title(self):
-        """
-            Sets the sort title.
-        """
-        # Add series/volume to sort title where possible.
-        series_with_volume = ''
-        if self.series and self.volume:
-            series_with_volume = self.series + ', ' + self.volume
-        # Only include subtitle in sort if not in a series
-        if not self.volume:
-            self.title = self.metadata.title
-        if not self.metadata.title_sort or self.force:
-            self.metadata.title_sort = ' - '.join(
-                filter(
-                    None, [(series_with_volume), self.title]
-                )
-            )
-
-    def set_title(self):
-        """
-            Sets the title.
-        """
-        # If the `simplify_title` option is selected, don't append subtitle
-        # and remove extra endings on the title
-        if self.prefs['simplify_title']:
-            album_title = self.simplify_title()
-        elif self.subtitle:
-            album_title = self.title + ': ' + self.subtitle
-        else:
-            album_title = self.title
-        if not self.metadata.title or self.force:
-            self.metadata.title = album_title
-
     def parse_api_response(self, response):
         """
             Parses keys from API into helper variables if they exist.
         """
-        # Set empty variables
-        self.date = None
-        self.genres = None
-        self.rating = None
-        self.series = ''
-        self.series2 = ''
-        self.subtitle = ''
-        self.thumb = ''
-        self.volume = ''
-        self.volume2 = ''
+        self.set_empty_variables()
 
         if 'authors' in response:
             self.author = response['authors']
@@ -235,15 +212,104 @@ class AlbumUpdateTool(UpdateTool):
         if 'title' in response:
             self.title = response['title']
 
-    def volume_prefix(self, string):
-        book_regex = '(Book ?(\d*\.)?\d+[+-]?[\d]?)'
-        if not re.match(book_regex, string):
-            prefixed_string = ('Book ' + string)
-            return prefixed_string
-        return string
+    def set_metadata_date(self):
+        """
+            Sets the date.
+        """
+        if self.date is not None:
+            if not self.metadata.originally_available_at or self.force:
+                self.metadata.originally_available_at = self.date
 
-    # Remove extra description text from the title
+    def set_empty_variables(self):
+        """
+            Sets empty variables.
+        """
+        self.date = None
+        self.genres = None
+        self.rating = None
+        self.series = ''
+        self.series2 = ''
+        self.subtitle = ''
+        self.thumb = ''
+        self.volume = ''
+        self.volume2 = ''
+
+    def set_metadata_rating(self):
+        """
+            Sets the rating.
+        """
+        # We always want to refresh the rating
+        if self.rating:
+            self.metadata.rating = float(self.rating) * 2
+
+    def set_metadata_summary(self):
+        """
+            Sets the summary.
+        """
+        if not self.metadata.summary or self.force:
+            self.cleanup_html()
+            self.metadata.summary = self.synopsis
+
+    def set_metadata_studio(self):
+        """
+            Sets the studio.
+        """
+        if not self.metadata.studio or self.force:
+            self.metadata.studio = self.studio
+
+    def set_metadata_sort_title(self):
+        """
+            Sets the sort title.
+        """
+        # Add series/volume to sort title where possible.
+        series_with_volume = ''
+        if self.series and self.volume:
+            series_with_volume = self.series + ', ' + self.volume
+        # Only include subtitle in sort if not in a series
+        if not self.volume:
+            self.title = self.metadata.title
+        if not self.metadata.title_sort or self.force:
+            self.metadata.title_sort = ' - '.join(
+                filter(
+                    None, [(series_with_volume), self.title]
+                )
+            )
+
+    def set_metadata_tags(self):
+        """
+            Set tags of artist
+        """
+        # Create tagger.
+        tagger = TagTool(self, self.prefs)
+        # Genres.
+        tagger.add_genres()
+        # Narrators.
+        tagger.add_narrators_to_styles()
+        # Authors.
+        if self.prefs['store_author_as_mood']:
+            tagger.add_authors_to_moods()
+        # Series.
+        tagger.add_series_to_moods()
+
+    def set_metadata_title(self):
+        """
+            Sets the title.
+        """
+        # If the `simplify_title` option is selected, don't append subtitle
+        # and remove extra endings on the title
+        if self.prefs['simplify_title']:
+            album_title = self.simplify_title()
+        elif self.subtitle:
+            album_title = self.title + ': ' + self.subtitle
+        else:
+            album_title = self.title
+        if not self.metadata.title or self.force:
+            self.metadata.title = album_title
+
     def simplify_title(self):
+        """
+            Remove extra description text from the title
+        """
         # If the title ends with a series part, remove it
         # works for "Book 1" and "Book One"
         album_title = re.sub(
@@ -257,16 +323,93 @@ class AlbumUpdateTool(UpdateTool):
 
         return album_title
 
+    def volume_prefix(self, string):
+        """
+            Prefixes volume number with 'Book' if it doesn't exist.
+        """
+        book_regex = '(Book ?(\d*\.)?\d+[+-]?[\d]?)'
+        if not re.match(book_regex, string):
+            prefixed_string = ('Book ' + string)
+            return prefixed_string
+        return string
+
 
 class ArtistUpdateTool(UpdateTool):
+    def get_square_image(self, image_url):
+        """
+            Get square author photos from Audible
+
+            Crop each portrait photo to a square centered at the top,
+            and crop each landscape photo to a square at the horizontal center
+        """
+        try:
+            image_file_dl = urllib.urlopen(image_url)
+            image_file_dl_contents = image_file_dl.read()
+            image_file_dl.close()
+
+            image_file = os.tmpfile()
+            image_file.write(image_file_dl_contents)
+
+            image_file.seek(0)
+
+            head = image_file.read(24)
+            if len(head) != 24:
+                image_file.close()
+                return image_url
+
+            image_file.seek(0)  # Read 0xff next
+            size = 2
+            ftype = 0
+            while not 0xc0 <= ftype <= 0xcf:
+                image_file.seek(size, 1)
+                byte = image_file.read(1)
+                while ord(byte) == 0xff:
+                    byte = image_file.read(1)
+                ftype = ord(byte)
+                size = struct.unpack('>H', image_file.read(2))[0] - 2
+            # We are at a SOFn block
+            image_file.seek(1, 1)  # Skip `precision' byte.
+            height, width = struct.unpack('>HH', image_file.read(4))
+
+            image_file.close()
+
+            if (height > width):
+                # Return a portrait image centered at the top
+                w_str = str(width)
+                square_image_url = image_url.replace(
+                    '.jpg',
+                    '.__01_SX'+w_str+'_CR0,0,'+w_str+','+w_str+'__.jpg'
+                )
+                return square_image_url
+
+            if (width > height):
+                # Return a landscape image centered at the horizontal middle
+                h_str = str(height)
+                padding = str((width - height) / 2)
+                square_image_url = image_url.replace(
+                    '.jpg',
+                    '.__01_SY'+h_str+'_CR'+padding+',0,'+h_str+','+h_str+'__.jpg'
+                )
+                return square_image_url
+
+            return image_url
+
+        except Exception as err:
+            log.separator(
+                msg=(
+                    'Error getting square image for ' + self.media.title
+                ),
+                log_level="error"
+            )
+            log.error(err)
+        return image_url
+
+
     def parse_api_response(self, response):
         """
             Parses keys from API into helper variables if they exist.
         """
-        # Set empty variables
-        self.date = None
-        self.genres = None
-        self.thumb = ''
+        self.set_empty_variables()
 
         if 'description' in response:
             self.description = response['description']
@@ -275,7 +418,67 @@ class ArtistUpdateTool(UpdateTool):
         if 'name' in response:
             self.name = response['name']
         if 'image' in response:
-            self.thumb = response['image']
+            squared_image = self.get_square_image(response['image'])
+            log.debug('Square image: ' + squared_image)
+            self.thumb = squared_image
+
+    def set_metadata_description(self):
+        """
+            Set description of artist
+        """
+        if not self.metadata.summary or self.force:
+            self.cleanup_html()
+            self.metadata.summary = self.description
+
+    def set_empty_variables(self):
+        """
+            Sets empty variables.
+        """
+        self.date = None
+        self.genres = None
+        self.thumb = ''
+
+    def set_metadata_sort_title(self):
+        """
+            Set sort title of artist
+        """
+        if not self.metadata.title_sort or self.force:
+            if self.prefs['sort_author_by_last_name'] and not (
+                # Handle single word names
+                re.match(r'\A[\w-]+\Z', self.name)
+            ):
+                split_author_surname = re.match(
+                    '^(.+?).([^\s,]+)(,?.(?:[JS]r\.?|III?|IV))?$',
+                    self.name,
+                )
+                self.metadata.title_sort = ', '.join(
+                    filter(
+                        None,
+                        [
+                            (split_author_surname.group(2) + ', ' +
+                                split_author_surname.group(1)),
+                            split_author_surname.group(3)
+                        ]
+                    )
+                )
+            else:
+                self.metadata.title_sort = self.metadata.title
+
+    def set_metadata_tags(self):
+        """
+            Set tags of artist
+        """
+        # Create tagger.
+        tagger = TagTool(self, self.prefs)
+        # Genres.
+        tagger.add_genres()
+
+    def set_metadata_title(self):
+        """
+            Set title of artist
+        """
+        if not self.metadata.title or self.force:
+            self.metadata.title = self.name
 
 
 class TagTool:

@@ -7,7 +7,7 @@ from _version import version
 from logging import Logging
 from search_tools import AlbumSearchTool, ArtistSearchTool, ScoreTool
 from time import sleep
-from update_tools import AlbumUpdateTool, ArtistUpdateTool, TagTool
+from update_tools import AlbumUpdateTool, ArtistUpdateTool
 
 VERSION_NO = version
 
@@ -50,6 +50,9 @@ class AudiobookArtist(Agent.Artist):
     prev_search_provider = 0
 
     def search(self, results, media, lang, manual):
+        """
+            Search for artist metadata.
+        """
         # Instantiate search helper
         search_helper = ArtistSearchTool(
             'authors', lang, manual, media, Prefs, results)
@@ -130,6 +133,9 @@ class AudiobookArtist(Agent.Artist):
                 break
 
     def update(self, metadata, media, lang, force):
+        """
+            Update artist metadata.
+        """
         log.separator(
             msg=(
                 "UPDATING: " + media.title + (
@@ -144,30 +150,6 @@ class AudiobookArtist(Agent.Artist):
             'authors', force, lang, media, metadata, Prefs)
 
         self.call_item_api(update_helper)
-
-        # cleanup description
-        update_helper.description = (
-            update_helper.description.replace("<i>", "")
-            .replace("</i>", "")
-            .replace("<em>", "")
-            .replace("</em>", "")
-            .replace("<u>", "")
-            .replace("</u>", "")
-            .replace("<b>", "")
-            .replace("</b>", "")
-            .replace("<strong>", "")
-            .replace("</strong>", "")
-            .replace("<ul>", "")
-            .replace("</ul>", "\n")
-            .replace("<ol>", "")
-            .replace("</ol>", "\n")
-            .replace("<li>", " • ")
-            .replace("</li>", "\n")
-            .replace("<br />", "")
-            .replace("<p>", "")
-            .replace("</p>", "\n")
-            .strip()
-        )
 
         self.compile_metadata(update_helper)
 
@@ -188,6 +170,9 @@ class AudiobookArtist(Agent.Artist):
         return results_list
 
     def process_results(self, helper, result):
+        """
+            Process the results from the API call.
+        """
         # Walk the found items and gather extended information
         info = []
 
@@ -221,38 +206,19 @@ class AudiobookArtist(Agent.Artist):
         helper.parse_api_response(response)
 
     def compile_metadata(self, helper):
+        """
+            Compiles the metadata for the artist.
+        """
         # Description.
-        if not helper.metadata.summary or helper.force:
-            helper.metadata.summary = helper.description
-        tagger = TagTool(helper, Prefs)
-        # Genres.
-        tagger.add_genres()
+        helper.set_metadata_description()
+        # Tags.
+        helper.set_metadata_tags()
         # Title.
-        if not helper.metadata.title or helper.force:
-            helper.metadata.title = helper.name
+        helper.set_metadata_title()
         # Sort Title.
-        if not helper.metadata.title_sort or helper.force:
-            if Prefs['sort_author_by_last_name'] and not (
-                # Handle single word names
-                re.match(r'\A[\w-]+\Z', helper.name)
-            ):
-                split_author_surname = re.match(
-                    '^(.+?).([^\s,]+)(,?.(?:[JS]r\.?|III?|IV))?$',
-                    helper.name,
-                )
-                helper.metadata.title_sort = ', '.join(
-                    filter(
-                        None,
-                        [
-                            (split_author_surname.group(2) + ', ' +
-                                split_author_surname.group(1)),
-                            split_author_surname.group(3)
-                        ]
-                    )
-                )
-            else:
-                helper.metadata.title_sort = helper.metadata.title
+        helper.set_metadata_sort_title()
         # Thumb.
+        # Kept here because of Proxy
         if helper.thumb:
             if helper.thumb not in helper.metadata.posters or helper.force:
                 helper.metadata.posters[helper.thumb] = Proxy.Media(
@@ -260,12 +226,6 @@ class AudiobookArtist(Agent.Artist):
                 )
 
         helper.log_update_metadata()
-
-    def hasProxy(self):
-        return Prefs['imageproxyurl'] is not None
-
-    def makeProxyUrl(self, url, referer):
-        return Prefs['imageproxyurl'] + ('?url=%s&referer=%s' % (url, referer))
 
 
 class AudiobookAlbum(Agent.Album):
@@ -279,6 +239,9 @@ class AudiobookAlbum(Agent.Album):
     prev_search_provider = 0
 
     def search(self, results, media, lang, manual):
+        """
+            Search for an album.
+        """
         # Instantiate search helper
         search_helper = AlbumSearchTool(
             'books', lang, manual, media, Prefs, results)
@@ -388,6 +351,9 @@ class AudiobookAlbum(Agent.Album):
                 break
 
     def update(self, metadata, media, lang, force):
+        """
+            Update an album.
+        """
         log.separator(
             msg=(
                 "UPDATING: " + media.title + (
@@ -403,30 +369,6 @@ class AudiobookAlbum(Agent.Album):
 
         self.call_item_api(update_helper)
 
-        # cleanup synopsis
-        update_helper.synopsis = (
-            update_helper.synopsis.replace("<i>", "")
-            .replace("</i>", "")
-            .replace("<em>", "")
-            .replace("</em>", "")
-            .replace("<u>", "")
-            .replace("</u>", "")
-            .replace("<b>", "")
-            .replace("</b>", "")
-            .replace("<strong>", "")
-            .replace("</strong>", "")
-            .replace("<ul>", "")
-            .replace("</ul>", "\n")
-            .replace("<ol>", "")
-            .replace("</ol>", "\n")
-            .replace("<li>", " • ")
-            .replace("</li>", "\n")
-            .replace("<br />", "")
-            .replace("<p>", "")
-            .replace("</p>", "\n")
-            .strip()
-        )
-
         self.compile_metadata(update_helper)
 
     def call_search_api(self, helper):
@@ -441,6 +383,9 @@ class AudiobookAlbum(Agent.Album):
         return results_list
 
     def process_results(self, helper, result):
+        """
+            Process the results from the API call.
+        """
         # Walk the found items and gather extended information
         info = []
 
@@ -487,30 +432,24 @@ class AudiobookAlbum(Agent.Album):
         helper.date = self.getDateFromString(helper.date)
 
     def compile_metadata(self, helper):
+        """
+            Compiles the metadata for the book.
+        """
         # Date.
-        helper.set_date()
-        tagger = TagTool(helper, Prefs)
-        # Genres.
-        tagger.add_genres()
-        # Narrators.
-        tagger.add_narrators_to_styles()
-
+        helper.set_metadata_date()
+        # Tags.
+        helper.set_metadata_tags()
         # Moods:
         if helper.force:
             helper.metadata.moods.clear()
-        # Authors.
-        if Prefs['store_author_as_mood']:
-            tagger.add_authors_to_moods()
-        # Series.
-        tagger.add_series_to_moods()
         # Title.
-        helper.set_title()
+        helper.set_metadata_title()
         # Sort Title.
-        helper.set_sort_title()
+        helper.set_metadata_sort_title()
         # Studio.
-        helper.set_studio()
+        helper.set_metadata_studio()
         # Summary.
-        helper.set_summary()
+        helper.set_metadata_summary()
         # Thumb.
         # Kept here because of Proxy
         if helper.thumb:
@@ -521,12 +460,15 @@ class AudiobookAlbum(Agent.Album):
                 # Re-prioritize the poster to the first position
                 helper.metadata.posters.validate_keys([helper.thumb])
         # Rating.
-        helper.set_rating()
+        helper.set_metadata_rating()
 
         # Log the resulting metadata
         helper.log_update_metadata()
 
     def getDateFromString(self, string):
+        """
+            Converts a string to a date object.
+        """
         try:
             return Datetime.ParseDate(string).date()
         except AttributeError:
@@ -534,15 +476,13 @@ class AudiobookAlbum(Agent.Album):
         except ValueError:
             return None
 
-    def hasProxy(self):
-        return Prefs['imageproxyurl'] is not None
-
-    def makeProxyUrl(self, url, referer):
-        return Prefs['imageproxyurl'] + ('?url=%s&referer=%s' % (url, referer))
-
 
 # Common helpers
+
 def json_decode(output):
+    """
+        Decodes JSON output.
+    """
     try:
         return json.loads(output, encoding="utf-8")
     except AttributeError:
