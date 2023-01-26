@@ -308,7 +308,7 @@ class AlbumUpdateTool(UpdateTool):
 
     def simplify_title(self):
         """
-            # Remove extra description text from the title
+            Remove extra description text from the title
         """
         # If the title ends with a series part, remove it
         # works for "Book 1" and "Book One"
