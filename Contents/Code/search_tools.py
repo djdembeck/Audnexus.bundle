@@ -202,13 +202,18 @@ class AlbumSearchTool(SearchTool):
     def name_to_initials(self, input_name):
         """
             Converts a name to initials.
+            Shorten input_name by splitting on whitespaces
+            Only the surname stays as whole, the rest gets truncated
+            and merged with dots.
             Example: 'Arthur Conan Doyle' -> 'A.C.Doyle'
             Example: 'J K Rowling' -> 'J.K.Rowling'
             Example: 'J. R. R. Tolkien' -> 'J.R.R.Tolkien'
         """
-        # Shorten input_name by splitting on whitespaces
-        # Only the surname stays as whole, the rest gets truncated
-        # and merged with dots.
+
+        # Remove quotation marks
+        input_name = input_name.replace('"', '')
+
+        # Split name into parts
         name_parts = self.clear_contributor_text(input_name).split()
 
         # Check if prename and surname exist, otherwise exit
