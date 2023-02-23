@@ -238,8 +238,10 @@ class AlbumSearchTool(SearchTool):
         input_name = self.media.album if self.media.album else self.media.title
         log.debug('Input Name: %s', input_name)
 
+        # Remove Diacritics
+        name = String.StripDiacritics(input_name)
         # Remove brackets and text inside
-        name = re.sub(r'\[[^"]*\]', '', input_name)
+        name = re.sub(r'\[[^"]*\]', '', name)
         # Remove unwanted characters
         name = re.sub(r'[^\w\s]', '', name)
         # Remove unwanted words
