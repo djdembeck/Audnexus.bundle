@@ -203,6 +203,8 @@ class AlbumSearchTool(SearchTool):
         """
             Converts a name to initials.
             Example: 'Arthur Conan Doyle' -> 'A.C.Doyle'
+            Example: 'J K Rowling' -> 'J.K.Rowling'
+            Example: 'J. R. R. Tolkien' -> 'J.R.R.Tolkien'
         """
         # Shorten input_name by splitting on whitespaces
         # Only the surname stays as whole, the rest gets truncated
@@ -216,7 +218,12 @@ class AlbumSearchTool(SearchTool):
         new_name = ""
         # Truncate prenames
         for part in name_parts[:-1]:
-            new_name += part[0] + "." if part[1] != "." else part
+            try:
+                # Try to get first letter of prename and add dot
+                new_name += part[0] + "." if part[1] != "." else part
+            except IndexError:
+                # If there is only one letter, add dot and return
+                new_name += part + "." if part != "." else part
         # Add surname
         new_name += name_parts[-1]
 
