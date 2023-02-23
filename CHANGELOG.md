@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.1.1](https://github.com/djdembeck/Audnexus.bundle/compare/v1.1.0...v1.1.1) (2023-02-23)
+
+
+### Bug Fixes
+
+* **album-search:** :bug: `name_to_initials` could throw IndexError when dealing with author using initials ([a560848](https://github.com/djdembeck/Audnexus.bundle/commit/a5608481ea0dc69b93a8c793f8077503483c4b51)), closes [#79](https://github.com/djdembeck/Audnexus.bundle/issues/79)
+* **album-search:** :bug: remove qutotations around author name when shortening to initials ([1fc755b](https://github.com/djdembeck/Audnexus.bundle/commit/1fc755b80b1e923e08f8d0e26c546bfcf76e9955)), closes [#67](https://github.com/djdembeck/Audnexus.bundle/issues/67)
+* **album-search:** :bug: searches with accented characters would remove characters ([0645c16](https://github.com/djdembeck/Audnexus.bundle/commit/0645c168bcb1795691b4980694b204229fa5206e)), closes [#81](https://github.com/djdembeck/Audnexus.bundle/issues/81)
+
 ## [1.1.0](https://github.com/djdembeck/Audnexus.bundle/compare/v1.0.0...v1.1.0) (2023-01-26)
 
 
