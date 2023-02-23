@@ -202,11 +202,18 @@ class AlbumSearchTool(SearchTool):
     def name_to_initials(self, input_name):
         """
             Converts a name to initials.
+            Shorten input_name by splitting on whitespaces
+            Only the surname stays as whole, the rest gets truncated
+            and merged with dots.
             Example: 'Arthur Conan Doyle' -> 'A.C.Doyle'
+            Example: 'J K Rowling' -> 'J.K.Rowling'
+            Example: 'J. R. R. Tolkien' -> 'J.R.R.Tolkien'
         """
-        # Shorten input_name by splitting on whitespaces
-        # Only the surname stays as whole, the rest gets truncated
-        # and merged with dots.
+
+        # Remove quotation marks
+        input_name = input_name.replace('"', '')
+
+        # Split name into parts
         name_parts = self.clear_contributor_text(input_name).split()
 
         # Check if prename and surname exist, otherwise exit
@@ -216,7 +223,12 @@ class AlbumSearchTool(SearchTool):
         new_name = ""
         # Truncate prenames
         for part in name_parts[:-1]:
-            new_name += part[0] + "." if part[1] != "." else part
+            try:
+                # Try to get first letter of prename and add dot
+                new_name += part[0] + "." if part[1] != "." else part
+            except IndexError:
+                # If there is only one letter, add dot and return
+                new_name += part + "." if part != "." else part
         # Add surname
         new_name += name_parts[-1]
 
@@ -231,8 +243,10 @@ class AlbumSearchTool(SearchTool):
         input_name = self.media.album if self.media.album else self.media.title
         log.debug('Input Name: %s', input_name)
 
+        # Remove Diacritics
+        name = String.StripDiacritics(input_name)
         # Remove brackets and text inside
-        name = re.sub(r'\[[^"]*\]', '', input_name)
+        name = re.sub(r'\[[^"]*\]', '', name)
         # Remove unwanted characters
         name = re.sub(r'[^\w\s]', '', name)
         # Remove unwanted words
