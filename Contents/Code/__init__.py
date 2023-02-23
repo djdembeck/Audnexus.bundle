@@ -1,7 +1,6 @@
 # Audnexus Agent
 # coding: utf-8
 import json
-import re
 # Import internal tools
 from _version import version
 from logging import Logging
