@@ -664,11 +664,11 @@ class ScoreTool:
         """
         lang_dict = {
             self.english_locale: 'English',
-            'de': 'Deutsch',
-            'es': 'Español',
-            'fr': 'Français',
-            'it': 'Italiano',
-            'jp': '日本語',
+            'de': 'German',
+            'es': 'Spanish',
+            'fr': 'French',
+            'it': 'Italian',
+            'ja': 'Japanese',
         }
 
         if language != lang_dict[self.helper.lang]:
