@@ -8,8 +8,8 @@ import urllib
 # Setup logger
 log = Logging()
 
-asin_regex = '(?=.\\d)[A-Z\\d]{10}'
-region_regex = '(?<=\[)[A-Za-z]{2}(?=\])'
+asin_regex = re.compile(r'(?=.\d)[A-Z\d]{10}')
+region_regex = re.compile(r'(?<=\[)[A-Za-z]{2}(?=\])')
 
 
 class SearchTool:
@@ -41,18 +41,26 @@ class SearchTool:
 
     def check_for_asin(self):
         """
-            Checks filename and search query for ASIN to quick match.
+            Checks filename (for books) and/or search query for ASIN to quick match.
         """
-        filename_search_asin = self.search_asin(self.media.filename)
+        # Check filename for ASIN if content type is books
+        if self.content_type == 'books':
+            # Provide a plain filename for ASIN search
+            filename_unquoted = urllib.unquote(
+                self.media.filename).decode('utf8')
+            filename_search_asin = self.search_asin(filename_unquoted)
+
+            if filename_search_asin:
+                log.info('ASIN found in filename')
+                self.check_for_region(filename_unquoted)
+                return filename_search_asin.group(0) + '_' + self.region_override
+
+        # Check search query for ASIN
         # Default to album and use artist if no album
         manual_asin = self.media.album if self.media.album else self.media.artist
         manual_search_asin = self.search_asin(manual_asin)
 
-        if filename_search_asin:
-            log.info('ASIN found in filename')
-            self.check_for_region(self.media.filename)
-            return filename_search_asin.group(0) + '_' + self.region_override
-        elif manual_search_asin:
+        if manual_search_asin:
             log.info('ASIN found in manual search')
             self.check_for_region(manual_asin)
             return manual_search_asin.group(0) + '_' + self.region_override
@@ -137,14 +145,14 @@ class SearchTool:
             Searches for ASIN in a string.
         """
         if input:
-            return re.search(asin_regex, urllib.unquote(input).decode('utf8'))
+            return re.search(asin_regex, input)
 
     def search_region(self, input):
         """
             Searches for region in a string.
         """
         if input:
-            return re.search(region_regex, urllib.unquote(input).decode('utf8'))
+            return re.search(region_regex, input)
 
     def validate_author_name(self):
         """
@@ -664,11 +672,11 @@ class ScoreTool:
         """
         lang_dict = {
             self.english_locale: 'English',
-            'de': 'Deutsch',
-            'es': 'Español',
-            'fr': 'Français',
-            'it': 'Italiano',
-            'jp': '日本語',
+            'de': 'German',
+            'es': 'Spanish',
+            'fr': 'French',
+            'it': 'Italian',
+            'ja': 'Japanese',
         }
 
         if language != lang_dict[self.helper.lang]:

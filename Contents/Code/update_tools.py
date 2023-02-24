@@ -404,7 +404,6 @@ class ArtistUpdateTool(UpdateTool):
             log.error(err)
         return image_url
 
-
     def parse_api_response(self, response):
         """
             Parses keys from API into helper variables if they exist.
@@ -443,10 +442,8 @@ class ArtistUpdateTool(UpdateTool):
             Set sort title of artist
         """
         if not self.metadata.title_sort or self.force:
-            if self.prefs['sort_author_by_last_name'] and not (
-                # Handle single word names
-                re.match(r'\A[\w-]+\Z', self.name)
-            ):
+            single_word_name = re.match(r'\A[\w-]+\Z', self.name)
+            if self.prefs['sort_author_by_last_name'] and not single_word_name:
                 split_author_surname = re.match(
                     '^(.+?).([^\s,]+)(,?.(?:[JS]r\.?|III?|IV))?$',
                     self.name,

@@ -1,7 +1,6 @@
 # Audnexus Agent
 # coding: utf-8
 import json
-import re
 # Import internal tools
 from _version import version
 from logging import Logging
@@ -42,7 +41,12 @@ def Start():
 class AudiobookArtist(Agent.Artist):
     name = 'Audnexus Agent'
     languages = [
-        Locale.Language.English
+        Locale.Language.English,
+        'de',
+        'es',
+        'fr',
+        'it',
+        'ja',
     ]
     primary_provider = True
     accepts_from = ['com.plexapp.agents.localmedia']
@@ -231,7 +235,12 @@ class AudiobookArtist(Agent.Artist):
 class AudiobookAlbum(Agent.Album):
     name = 'Audnexus Agent'
     languages = [
-        Locale.Language.English
+        Locale.Language.English,
+        'de',
+        'es',
+        'fr',
+        'it',
+        'ja',
     ]
     primary_provider = True
     accepts_from = ['com.plexapp.agents.localmedia']
