@@ -170,4 +170,5 @@ There are a few tricks to know about using fix match for books and authors:
 - Series as `Mood` tag (prefixed by `Series:`)
 - Sorted by Series number and then book title.
 
-Collections are not available to legacy agents. Please do not open requests for them.
+**This agent cannot create collections for your series'. 
+If you would like to set up automatic collections for book series', you can do so with the guide here: [Audnexus+Plex-Meta-Manager: Audiobook Series Collections](https://github.com/book-tools/audnexus-pmm-series)**
