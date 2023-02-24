@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.2.0](https://github.com/djdembeck/Audnexus.bundle/compare/v1.1.1...v1.2.0) (2023-02-24)
+
+
+### Features
+
+* :sparkles: add ability to select library Language ([295c36f](https://github.com/djdembeck/Audnexus.bundle/commit/295c36f363a1577548d72a38f45a6fcf3ee810ba))
+
+
+### Bug Fixes
+
+* **album-search:** :bug: language scoring  didn't match Audible's names for languages ([c501bec](https://github.com/djdembeck/Audnexus.bundle/commit/c501bec760d8b2a258fc9562ca79351835d90037))
+* **author-search:** :ambulance: ASIN in filename was being used as search for author as well as book ([4e622b3](https://github.com/djdembeck/Audnexus.bundle/commit/4e622b3b5de6ea084db24387768348b9ec45cd33))
+
 ### [1.1.1](https://github.com/djdembeck/Audnexus.bundle/compare/v1.1.0...v1.1.1) (2023-02-23)
 
 
