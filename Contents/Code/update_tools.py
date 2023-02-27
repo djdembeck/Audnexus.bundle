@@ -207,6 +207,8 @@ class AlbumUpdateTool(UpdateTool):
             self.synopsis = response['summary']
         if 'image' in response:
             self.thumb = response['image']
+        if 'similar' in response:
+            self.similar = response['similar']
         if 'subtitle' in response:
             self.subtitle = response['subtitle']
         if 'title' in response:
@@ -296,6 +298,8 @@ class AlbumUpdateTool(UpdateTool):
             tagger.add_authors_to_moods()
         # Series.
         tagger.add_series_to_moods()
+        # Similar.
+        tagger.add_similar()
 
     def set_metadata_title(self):
         """
@@ -426,6 +430,8 @@ class ArtistUpdateTool(UpdateTool):
             squared_image = self.get_square_image(response['image'])
             log.debug('Square image: ' + squared_image)
             self.thumb = squared_image
+        if 'similar' in response:
+            self.similar = response['similar']
 
     def set_metadata_description(self):
         """
@@ -475,6 +481,8 @@ class ArtistUpdateTool(UpdateTool):
         tagger = TagTool(self, self.prefs)
         # Genres.
         tagger.add_genres()
+        # Similar.
+        tagger.add_similar()
 
     def set_metadata_title(self):
         """
@@ -528,6 +536,14 @@ class TagTool:
             self.helper.metadata.moods.add("Series: " + self.helper.series)
         if self.helper.series2:
             self.helper.metadata.moods.add("Series: " + self.helper.series2)
+
+    def add_similar(self):
+        """
+            Adds similar items.
+        """
+        if self.helper.similar:
+            for item in self.helper.similar:
+                self.helper.metadata.similar.add(item['name'])
 
     def clear_moods(self):
         """
