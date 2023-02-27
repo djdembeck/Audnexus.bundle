@@ -281,6 +281,12 @@ class AlbumUpdateTool(UpdateTool):
         """
         # Create tagger.
         tagger = TagTool(self, self.prefs)
+
+        # Clears moods if force (refresh) is true.
+        if self.force:
+            tagger.clear_moods()
+            tagger.clear_styles()
+
         # Genres.
         tagger.add_genres()
         # Narrators.
@@ -522,3 +528,15 @@ class TagTool:
             self.helper.metadata.moods.add("Series: " + self.helper.series)
         if self.helper.series2:
             self.helper.metadata.moods.add("Series: " + self.helper.series2)
+
+    def clear_moods(self):
+        """
+            Clears moods.
+        """
+        self.helper.metadata.moods.clear()
+
+    def clear_styles(self):
+        """
+            Clears styles.
+        """
+        self.helper.metadata.styles.clear()
