@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.2.1](https://github.com/djdembeck/Audnexus.bundle/compare/v1.2.0...v1.2.1) (2023-02-27)
+
+
+### Bug Fixes
+
+* **album-update:** :bug: tags were cleared after being set instead of before ([09b1ff5](https://github.com/djdembeck/Audnexus.bundle/commit/09b1ff58ee7f051745171679af1421f8997e98d8)), closes [#88](https://github.com/djdembeck/Audnexus.bundle/issues/88)
+
 ## [1.2.0](https://github.com/djdembeck/Audnexus.bundle/compare/v1.1.1...v1.2.0) (2023-02-24)
 
 
