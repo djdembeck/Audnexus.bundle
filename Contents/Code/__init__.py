@@ -448,9 +448,6 @@ class AudiobookAlbum(Agent.Album):
         helper.set_metadata_date()
         # Tags.
         helper.set_metadata_tags()
-        # Moods:
-        if helper.force:
-            helper.metadata.moods.clear()
         # Title.
         helper.set_metadata_title()
         # Sort Title.
