@@ -231,6 +231,7 @@ class AlbumUpdateTool(UpdateTool):
         self.rating = None
         self.series = ''
         self.series2 = ''
+        self.similar = None
         self.subtitle = ''
         self.thumb = ''
         self.volume = ''
