@@ -44,7 +44,7 @@ class SearchTool:
             Checks filename (for books) and/or search query for ASIN to quick match.
         """
         # Check filename for ASIN if content type is books
-        if self.content_type == 'books':
+        if self.media.filename and self.content_type == 'books':
             # Provide a plain filename for ASIN search
             filename_unquoted = urllib.unquote(
                 self.media.filename).decode('utf8')
