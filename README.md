@@ -155,6 +155,7 @@ There are a few tricks to know about using fix match for books and authors:
 - Genres
 - Sorted by `Last Name, First Name`
 - Combines books with multiple authors into the first author, reducing duplicate author entries/pages.
+- Similar authors
 
 #### Books (Albums)
 - High resolution cover (up to 3200x3200).
