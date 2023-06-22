@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.3.0](https://github.com/djdembeck/Audnexus.bundle/compare/v1.2.2...v1.3.0) (2023-06-22)
+
+
+### Features
+
+* similar artists ([#90](https://github.com/djdembeck/Audnexus.bundle/issues/90)) ([370ee95](https://github.com/djdembeck/Audnexus.bundle/commit/370ee9572579ffea09e62803ea97cfb637bd03b2))
+
 ### [1.2.2](https://github.com/djdembeck/Audnexus.bundle/compare/v1.2.1...v1.2.2) (2023-03-19)
 
 
