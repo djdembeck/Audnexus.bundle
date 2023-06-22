@@ -99,6 +99,8 @@ class UpdateTool:
                     {'Author name': self.metadata.title},
                     {'Author poster URL': self.thumb},
                     {'Author sort name': self.metadata.title_sort},
+                    {'Similar Authors': ', '.join([author['name']
+                                                   for author in self.similar] if self.similar else [])},
                 ]
             )
 
@@ -448,6 +450,7 @@ class ArtistUpdateTool(UpdateTool):
         """
         self.date = None
         self.genres = None
+        self.similar = None
         self.thumb = ''
 
     def set_metadata_sort_title(self):
