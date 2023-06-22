@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.2.2](https://github.com/djdembeck/Audnexus.bundle/compare/v1.2.1...v1.2.2) (2023-03-19)
+
+
+### Bug Fixes
+
+* **album-search:** :bug: filename could be `None` when checking for asin ([d17cfef](https://github.com/djdembeck/Audnexus.bundle/commit/d17cfeff0a33f0083ecb7ac9489ae67ac21b4659)), closes [#92](https://github.com/djdembeck/Audnexus.bundle/issues/92)
+
 ### [1.2.1](https://github.com/djdembeck/Audnexus.bundle/compare/v1.2.0...v1.2.1) (2023-02-27)
 
 
