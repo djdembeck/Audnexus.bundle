@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.3.1](https://github.com/djdembeck/Audnexus.bundle/compare/v1.3.0...v1.3.1) (2023-08-25)
+
+
+### Bug Fixes
+
+* **album-search:** :bug: catch potential exception when reading filename ([0e06151](https://github.com/djdembeck/Audnexus.bundle/commit/0e06151821837045240880e5594f28f452c8e555))
+
 ## [1.3.0](https://github.com/djdembeck/Audnexus.bundle/compare/v1.2.2...v1.3.0) (2023-06-22)
 
 

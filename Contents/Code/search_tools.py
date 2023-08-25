@@ -45,10 +45,13 @@ class SearchTool:
         """
         # Check filename for ASIN if content type is books
         if self.media.filename and self.content_type == 'books':
-            # Provide a plain filename for ASIN search
-            filename_unquoted = urllib.unquote(
-                self.media.filename).decode('utf8')
-            filename_search_asin = self.search_asin(filename_unquoted)
+            try:
+                # Provide a plain filename for ASIN search
+                filename_unquoted = urllib.unquote(
+                    self.media.filename).decode('utf8')
+                filename_search_asin = self.search_asin(filename_unquoted)
+            except Exception as e:
+                log.error('Error checking filename for ASIN: %s', e)
 
             if filename_search_asin:
                 log.info('ASIN found in filename')
