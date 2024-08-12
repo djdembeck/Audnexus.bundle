@@ -25,7 +25,7 @@ class UpdateTool:
             Builds the URL for the API request.
         """
         # Get the current region
-        self.region_override = self.region if self.region else self.prefs['region']
+        self.region_override = self.get_preferred_region()
         # Set the region helper
         region_helper = RegionTool(
             region=self.region_override, content_type=self.content_type, id=self.extract_asin_from_id())
@@ -144,10 +144,21 @@ class UpdateTool:
             log.debug('Extracted region from ASIN: ' + region)
         except IndexError:
             log.info('No region found in ID, using default region.')
-            region = 'us'
+            region = self.get_preferred_region()
             # Save the region to the ID
             self.metadata.id = self.metadata.id + '_' + region
         # Set region and ASIN
+        return region
+
+    def get_preferred_region(self):
+        """
+            Get the preferred region from class or preferences.
+        """
+        try:
+            region = self.region
+        except AttributeError:
+            region = self.prefs['region']
+        log.info('Preferred region: ' + region)
         return region
 
     def log_update_metadata(self):
