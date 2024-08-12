@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.3.2](https://github.com/djdembeck/Audnexus.bundle/compare/v1.3.1...v1.3.2) (2024-08-12)
+
+
+### Bug Fixes
+
+* **author-update:** :bug: use preferred region when searching updating authors ([743870b](https://github.com/djdembeck/Audnexus.bundle/commit/743870b40f5af7ec34eaaff9a4455b8dab808c8f)), closes [#113](https://github.com/djdembeck/Audnexus.bundle/issues/113)
+
 ### [1.3.1](https://github.com/djdembeck/Audnexus.bundle/compare/v1.3.0...v1.3.1) (2023-08-25)
 
 
