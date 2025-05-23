@@ -1,9 +1,36 @@
+# plex debugging
+try:
+    import plexhints  # noqa: F401
+except ImportError:
+    pass
+else:  # the code is running outside of Plex
+    from typing import Optional
+    from plexhints import plexhints_setup, update_sys_path
+    plexhints_setup()  # reads the plugin plist file and determine if plexhints should use elevated policy or not
+    update_sys_path()  # when running outside plex, append the path
+    from plexhints.agent_kit import Agent, Media  # agent kit
+    from plexhints.locale_kit import Locale  # locale kit
+    from plexhints.network_kit import HTTP  # network kit
+    from plexhints.prefs_kit import Prefs  # prefs kit
+    from plexhints.proxy_kit import Proxy  # proxy kit
+    from plexhints.util_kit import String, Util  # util kit
+    from plexhints.constant_kit import CACHE_1WEEK  # constant kit
+    from plexhints.object_kit import MetadataSearchResult  # object kit
+
+    class Datetime:
+        """
+            Fake Datetime class to avoid importing datetime module.
+            This is a placeholder and should be replaced with the actual
+        """
+        pass
+
+
 # Audnexus Agent
 # coding: utf-8
 import json
 # Import internal tools
 from _version import version
-from logging import Logging
+from audnexuslogging import Logging
 from search_tools import AlbumSearchTool, ArtistSearchTool, ScoreTool
 from time import sleep
 from update_tools import AlbumUpdateTool, ArtistUpdateTool
@@ -18,10 +45,12 @@ log = Logging()
 
 
 def ValidatePrefs():
+    # type: () -> None
     log.debug('ValidatePrefs function call')
 
 
 def Start():
+    # type: () -> True
     HTTP.ClearCache()
     HTTP.CacheTime = CACHE_1WEEK
     HTTP.Headers['User-agent'] = (
@@ -32,21 +61,21 @@ def Start():
     HTTP.Headers['Accept-Encoding'] = 'gzip'
     log.separator(
         msg=(
-            "Audnexus Audiobooks Agent v" + VERSION_NO
+            "Audnexus Agent With Backup API v" + str(VERSION_NO)
         ),
         log_level="info"
     )
 
 
 class AudiobookArtist(Agent.Artist):
-    name = 'Audnexus Agent'
+    name = 'Audnexus Agent With Backup API'
     languages = [
         Locale.Language.English,
-        'de',
-        'es',
-        'fr',
-        'it',
-        'ja',
+        Locale.Language.German,  # 'de' is the locale code for German
+        Locale.Language.Spanish,  # 'es' is the locale code for Spanish
+        Locale.Language.French,  # 'fr' is the locale code for French
+        Locale.Language.Italian,  # 'it' is the locale code for Italian
+        Locale.Language.Japanese,  # 'ja' is the locale code for Japanese
     ]
     primary_provider = True
     accepts_from = ['com.plexapp.agents.localmedia']
@@ -54,6 +83,7 @@ class AudiobookArtist(Agent.Artist):
     prev_search_provider = 0
 
     def search(self, results, media, lang, manual):
+        # type: (object, Media.Artist, str, bool) -> None # type: ignore
         """
             Search for artist metadata.
         """
@@ -124,11 +154,11 @@ class AudiobookArtist(Agent.Artist):
                 )
             )
 
-            """
-                If there are more than one result,
-                and this one has a score that is >= GOOD SCORE,
-                then ignore the rest of the results
-            """
+            # """
+            #     If there are more than one result,
+            #     and this one has a score that is >= GOOD SCORE,
+            #     then ignore the rest of the results
+            # """
             if not manual and len(info) > 1 and r['score'] >= GOOD_SCORE:
                 log.info(
                     '            *** The score for these results are great, '
@@ -137,6 +167,7 @@ class AudiobookArtist(Agent.Artist):
                 break
 
     def update(self, metadata, media, lang, force):
+        # type: (object, Media.Artist, str, bool) -> None # type: ignore
         """
             Update artist metadata.
         """
@@ -158,8 +189,12 @@ class AudiobookArtist(Agent.Artist):
         self.compile_metadata(update_helper)
 
     def call_search_api(self, helper):
+        # type: (ArtistSearchTool) -> list
         """
             Builds URL then calls API, returns the JSON to helper function.
+
+            :param helper: ArtistSearchTool instance
+            :return: list
         """
         query = helper.build_search_args()
         search_url = helper.build_url(query)
@@ -174,6 +209,7 @@ class AudiobookArtist(Agent.Artist):
         return results_list
 
     def process_results(self, helper, result):
+        # type: (ArtistSearchTool, list) -> list
         """
             Process the results from the API call.
         """
@@ -200,16 +236,19 @@ class AudiobookArtist(Agent.Artist):
         return info
 
     def call_item_api(self, helper):
+        # type: (ArtistUpdateTool) -> None
         """
             Calls Audnexus API to get author details,
             then calls helper to parse those details.
         """
         update_url = helper.build_url()
-        request = str(make_request(update_url))
+        backup_url = helper.build_url(backup=True)
+        request = str(make_request(update_url, backup_url))
         response = json_decode(request)
         helper.parse_api_response(response)
 
     def compile_metadata(self, helper):
+        # type: (ArtistUpdateTool) -> None
         """
             Compiles the metadata for the artist.
         """
@@ -233,14 +272,14 @@ class AudiobookArtist(Agent.Artist):
 
 
 class AudiobookAlbum(Agent.Album):
-    name = 'Audnexus Agent'
+    name = 'Audnexus Agent With Backup API'
     languages = [
         Locale.Language.English,
-        'de',
-        'es',
-        'fr',
-        'it',
-        'ja',
+        Locale.Language.German,  # 'de' is the locale code for German
+        Locale.Language.Spanish,  # 'es' is the locale code for Spanish
+        Locale.Language.French,  # 'fr' is the locale code for French
+        Locale.Language.Italian,  # 'it' is the locale code for Italian
+        Locale.Language.Japanese,  # 'ja' is the locale code for Japanese
     ]
     primary_provider = True
     accepts_from = ['com.plexapp.agents.localmedia']
@@ -248,6 +287,7 @@ class AudiobookAlbum(Agent.Album):
     prev_search_provider = 0
 
     def search(self, results, media, lang, manual):
+        # type: (list, Media.Album, str, bool) -> None # type: ignore
         """
             Search for an album.
         """
@@ -347,11 +387,11 @@ class AudiobookAlbum(Agent.Album):
                 )
             )
 
-            """
-                If there are more than one result,
-                and this one has a score that is >= GOOD SCORE,
-                then ignore the rest of the results
-            """
+            # """
+            #     If there are more than one result,
+            #     and this one has a score that is >= GOOD SCORE,
+            #     then ignore the rest of the results
+            # """
             if not manual and len(info) > 1 and r['score'] >= GOOD_SCORE:
                 log.info(
                     '            *** The score for these results are great, '
@@ -381,17 +421,21 @@ class AudiobookAlbum(Agent.Album):
         self.compile_metadata(update_helper)
 
     def call_search_api(self, helper):
+        # type: (AlbumSearchTool) -> list
         """
+            Calls the Audnexus API to get book details,
+            then calls helper to parse those details.
             Builds URL then calls API, returns the JSON to helper function.
         """
         query = helper.build_search_args()
         search_url = helper.build_url(query)
-        request = str(make_request(search_url))
+        request = str(make_request(search_url, ))
         response = json_decode(request)
         results_list = helper.parse_api_response(response)
         return results_list
 
     def process_results(self, helper, result):
+        # type: (AlbumSearchTool, list) -> list
         """
             Process the results from the API call.
         """
@@ -428,12 +472,18 @@ class AudiobookAlbum(Agent.Album):
         return info
 
     def call_item_api(self, helper):
+        # type: (AlbumUpdateTool) -> None
         """
             Calls Audnexus API to get book details,
             then calls helper to parse those details.
         """
         update_url = helper.build_url()
-        request = str(make_request(update_url))
+        backup_url = helper.build_url(backup=True)
+        request = str(make_request(update_url, backup_url))
+        log.debug(
+            'Response from API: %s',
+            request
+        )
         response = json_decode(request)
         helper.parse_api_response(response)
 
@@ -441,6 +491,7 @@ class AudiobookAlbum(Agent.Album):
         helper.date = self.getDateFromString(helper.date)
 
     def compile_metadata(self, helper):
+        # type: (AlbumUpdateTool) -> None
         """
             Compiles the metadata for the book.
         """
@@ -461,7 +512,7 @@ class AudiobookAlbum(Agent.Album):
         if helper.thumb:
             if helper.thumb not in helper.metadata.posters or helper.force:
                 helper.metadata.posters[helper.thumb] = Proxy.Media(
-                    make_request(helper.thumb), sort_order=0
+                    make_request(helper.thumb, accept_json=False), sort_order=0
                 )
                 # Re-prioritize the poster to the first position
                 helper.metadata.posters.validate_keys([helper.thumb])
@@ -486,8 +537,11 @@ class AudiobookAlbum(Agent.Album):
 # Common helpers
 
 def json_decode(output):
+    # type: (str) -> dict | None
     """
         Decodes JSON output.
+        :param output: JSON string to decode
+        :return: Decoded JSON object or None if decoding fails
     """
     try:
         return json.loads(output, encoding="utf-8")
@@ -495,28 +549,49 @@ def json_decode(output):
         return None
 
 
-def make_request(url):
+def make_request(url, url2=None, accept_json=True):
+    # type: (str, Optional[str], bool) -> str
     """
         Makes and returns an HTTP request.
         Retries 4 times, increasing  time between each retry.
     """
     sleep_time = 1
     num_retries = 4
+    if accept_json:
+        HTTP.Headers['accept'] = 'application/json'
+    else:
+        if 'accept' in HTTP.Headers:
+            del HTTP.Headers['accept']
     for x in range(0, num_retries):
-        try:
-            make_request = HTTP.Request(url, timeout=90, sleep=sleep_time)
-            str_error = None
-            ssl_error = None
-        except Exception as str_error:
-            log.error("Failed http request attempt #" + x + ": " + url)
-            log.error(str_error)
-        except SSLError as ssl_error:
-            log.error("Failed http request attempt #" + x + ": " + url)
-            log.error(ssl_error)
-
-        if str_error or ssl_error:
+        request = the_request(url, sleep_time, return_binary=not accept_json)
+        if url2 is not None and request is None:
+            log.error("Failed http request attempt #" + str(x) + ": " + url)
+            log.warn("Audnexus API is down, trying backup URL")
+            log.info("Trying backup URL: " + url2)
+            request = the_request(url2, sleep_time, return_binary=not accept_json)
+            if request is None:
+                log.error("Failed http request attempt #" + str(x) + ": " + url2 + " (backup)")
+        if request is None:
             sleep(sleep_time)
-            sleep_time *= x
+            sleep_time = max(1, sleep_time * 2)
         else:
             break
-    return make_request
+    return request
+
+
+def the_request(url, sleep_time=1, return_binary=False):
+    # type: (str, int, bool) -> str
+    """
+        Makes and returns an HTTP request.
+        Retries 4 times, increasing  time between each retry.
+    """
+    log.debug("Making request to: " + url)
+    try:
+        response = HTTP.Request(url, timeout=90, sleep=sleep_time, immediate=True)
+    except Exception as str_error:
+        log.error(str_error)
+        return None
+    if return_binary:
+        return response.content  # Binary (e.g., for images)
+    else:
+        return str(response)  # JSON/text

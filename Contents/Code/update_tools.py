@@ -1,5 +1,14 @@
+# plex debugging
+try:
+    import plexhints  # noqa: F401
+except ImportError:
+    pass
+else:  # the code is running outside of Plex
+    from plexhints.prefs_kit import Prefs  # prefs kit
+    from plexhints.agent_kit import Media  # agent kit
+
 # Import internal tools
-from logging import Logging
+from audnexuslogging import Logging
 from region_tools import RegionTool
 import re
 import struct
@@ -10,8 +19,9 @@ import os
 log = Logging()
 
 
-class UpdateTool:
+class UpdateTool(object):
     def __init__(self, content_type, force, lang, media, metadata, prefs):
+        # type: (str, bool, str, Media.Album | Media.Artist, object, Prefs) -> None # type: ignore
         self.content_type = content_type
         self.force = force
         self.lang = lang
@@ -20,7 +30,7 @@ class UpdateTool:
         self.prefs = prefs
         self.region = self.extract_region_from_id()
 
-    def build_url(self):
+    def build_url(self, backup=False):
         """
             Builds the URL for the API request.
         """
@@ -29,8 +39,10 @@ class UpdateTool:
         # Set the region helper
         region_helper = RegionTool(
             region=self.region_override, content_type=self.content_type, id=self.extract_asin_from_id())
-
-        update_url = region_helper.get_id_url()
+        if backup:
+            update_url = region_helper.backup_api.get_id_url()
+        else:
+            update_url = region_helper.get_id_url()
         log.debug('Update URL: ' + update_url)
         return update_url
 
@@ -208,18 +220,34 @@ class AlbumUpdateTool(UpdateTool):
                 self.volume = self.volume_prefix(
                     response['seriesPrimary']['position']
                 )
+        elif 'series' in response and len(response['series']):
+            self.series = response['series'][0]['name']
+            if 'position' in response['series'][0]:
+                self.volume = self.volume_prefix(
+                    response['series'][0]['position']
+                )
         if 'seriesSecondary' in response:
             self.series2 = response['seriesSecondary']['name']
             if 'position' in response['seriesSecondary']:
                 self.volume2 = self.volume_prefix(
                     response['seriesSecondary']['position']
                 )
+        elif 'series' in response and len(response['series']) > 1:
+            self.series2 = response['series'][1]['name']
+            if 'position' in response['series'][1]:
+                self.volume2 = self.volume_prefix(
+                    response['series'][1]['position']
+                )
         if 'publisherName' in response:
             self.studio = response['publisherName']
+        elif 'publisher' in response:
+            self.studio = response['publisher']
         if 'summary' in response:
             self.synopsis = response['summary']
         if 'image' in response:
             self.thumb = response['image']
+        elif 'imageUrl' in response:
+            self.thumb = response['imageUrl']
         if 'similar' in response:
             self.similar = response['similar']
         if 'subtitle' in response:
@@ -351,7 +379,7 @@ class AlbumUpdateTool(UpdateTool):
         """
             Prefixes volume number with 'Book' if it doesn't exist.
         """
-        book_regex = '(Book ?(\d*\.)?\d+[+-]?[\d]?)'
+        book_regex = r'(Book ?(\d*\.)?\d+[+-]?[\d]?)'
         if not re.match(book_regex, string):
             prefixed_string = ('Book ' + string)
             return prefixed_string
@@ -472,7 +500,7 @@ class ArtistUpdateTool(UpdateTool):
             single_word_name = re.match(r'\A[\w-]+\Z', self.name)
             if self.prefs['sort_author_by_last_name'] and not single_word_name:
                 split_author_surname = re.match(
-                    '^(.+?).([^\s,]+)(,?.(?:[JS]r\.?|III?|IV))?$',
+                    r'^(.+?).([^\s,]+)(,?.(?:[JS]r\.?|III?|IV))?$',
                     self.name,
                 )
                 self.metadata.title_sort = ', '.join(
@@ -509,6 +537,7 @@ class ArtistUpdateTool(UpdateTool):
 
 class TagTool:
     def __init__(self, helper, Prefs):
+        # type: (ArtistUpdateTool | AlbumUpdateTool, Prefs) -> None # type: ignore
         self.helper = helper
         self.prefs = Prefs
 
