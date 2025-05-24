@@ -532,7 +532,7 @@ class AudiobookAlbum(Agent.Album):
         # Log the resulting metadata
         helper.log_update_metadata()
 
-        # add Collections to metadata 
+        # add Collections to metadata
         helper.make_collections()
 
     def getDateFromString(self, string):
@@ -545,6 +545,7 @@ class AudiobookAlbum(Agent.Album):
             return None
         except ValueError:
             return None
+
 
 def get_covers_from_audiobookcovers(query):
     # Construct the search URL
@@ -566,8 +567,8 @@ def get_covers_from_audiobookcovers(query):
         ]
     return []
 
-# Common helpers
 
+# Common helpers
 def json_decode(output):
     # type: (str) -> dict | None
     """

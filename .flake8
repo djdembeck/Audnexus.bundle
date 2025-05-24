@@ -5,4 +5,5 @@ filename =
     *.pys
 max-line-length = 120
 extend-exclude =
-    venv/
+    venv/,
+    Contents/Libraries/

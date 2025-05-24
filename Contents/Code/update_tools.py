@@ -30,7 +30,7 @@ class UpdateTool(object):
         self.metadata = metadata
         self.prefs = prefs
         self.region = self.extract_region_from_id()
-        
+
         PLEX_BASE_URL = "http://localhost:32400"
         PLEX_TOKEN = os.environ.get('PLEXTOKEN')
         self.plex = PlexServer(PLEX_BASE_URL, PLEX_TOKEN)
@@ -259,7 +259,7 @@ class AlbumUpdateTool(UpdateTool):
             self.subtitle = response['subtitle']
         if 'title' in response:
             self.title = response['title']
-        
+
         if 'isAdult' in response:
             self.explicit = response['isAdult']
         elif 'explicit' in response:
@@ -281,14 +281,10 @@ class AlbumUpdateTool(UpdateTool):
             pass
 
     def make_collections(self):
+        # dosn't do anything yet but will in the future add collections
         return
         for mood_id in self.metadata.moods:
-            mood = self.plex.library.section(mood_id)
-
-            
-
-        pass
-
+            mood = self.plex.library.section(mood_id) # noqa E841
 
     def set_metadata_date(self):
         """
