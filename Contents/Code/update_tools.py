@@ -6,6 +6,7 @@ except ImportError:
 else:  # the code is running outside of Plex
     from plexhints.prefs_kit import Prefs  # prefs kit
     from plexhints.agent_kit import Media  # agent kit
+    from plexhints.plugin_kit import Plugin  # plugin kit
 
 # Import internal tools
 from audnexuslogging import Logging
@@ -14,7 +15,7 @@ import re
 import struct
 import urllib
 import os
-
+from plexapi.server import PlexServer
 # Setup logger
 log = Logging()
 
@@ -29,6 +30,10 @@ class UpdateTool(object):
         self.metadata = metadata
         self.prefs = prefs
         self.region = self.extract_region_from_id()
+        
+        PLEX_BASE_URL = "http://localhost:32400"
+        PLEX_TOKEN = os.environ.get('PLEXTOKEN')
+        self.plex = PlexServer(PLEX_BASE_URL, PLEX_TOKEN)
 
     def build_url(self, backup=False):
         """
@@ -92,7 +97,7 @@ class UpdateTool(object):
         data_to_log = [{'ASIN': self.metadata.id}]
 
         # Determine which metadata to log
-        if self.content_type == 'books':
+        if self.content_type == 'books' or self.content_type == 'book':
             data_to_log.extend(
                 [
                     {'Book poster URL': self.thumb},
@@ -254,6 +259,36 @@ class AlbumUpdateTool(UpdateTool):
             self.subtitle = response['subtitle']
         if 'title' in response:
             self.title = response['title']
+        
+        if 'isAdult' in response:
+            self.explicit = response['isAdult']
+        elif 'explicit' in response:
+            self.explicit = response['explicit']
+
+    def set_metadata_adult(self):
+        if not self.explicit:
+            return
+        try:
+            GUID = Plugin.Identifier+"://"+self.metadata.id+"?lang=en"
+            result = self.plex.library.search(libtype='album', guid=GUID)
+            log.debug("Result: %s", result)
+            for item in result:
+                item.addLabel("Explicit")
+                item.addLabel("ADULT")
+                log.info("Added explicit label to item: %s", item.title)
+        except Exception as e:
+            log.error(e)
+            pass
+
+    def make_collections(self):
+        return
+        for mood_id in self.metadata.moods:
+            mood = self.plex.library.section(mood_id)
+
+            
+
+        pass
+
 
     def set_metadata_date(self):
         """
@@ -277,6 +312,7 @@ class AlbumUpdateTool(UpdateTool):
         self.thumb = ''
         self.volume = ''
         self.volume2 = ''
+        self.explicit = False
 
     def set_metadata_rating(self):
         """

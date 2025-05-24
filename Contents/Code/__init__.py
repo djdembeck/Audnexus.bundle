@@ -526,8 +526,14 @@ class AudiobookAlbum(Agent.Album):
         # Rating.
         helper.set_metadata_rating()
 
+        # Set adult content flag
+        helper.set_metadata_adult()
+
         # Log the resulting metadata
         helper.log_update_metadata()
+
+        # add Collections to metadata 
+        helper.make_collections()
 
     def getDateFromString(self, string):
         """
@@ -613,6 +619,8 @@ def the_request(url, sleep_time=1, return_binary=False):
     """
     log.debug("Making request to: " + url)
     try:
+        # Make the HTTP request
+        # eventually this will be replaced with a more robust HTTP client aka requests
         response = HTTP.Request(url, timeout=90, sleep=sleep_time, immediate=True)
     except Exception as str_error:
         log.error(str_error)
