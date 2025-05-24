@@ -31,6 +31,12 @@
         "default": "false"
     },
     {
+        "id": "extra_cover_art",
+        "label": "Download extra cover art (if available) from audiobookcovers.com Note: this will download a lot of cover art and may take a while",
+        "type": "bool",
+        "default": "false"
+    },
+    {
         "id": "logging_level",
         "label": "Level of plugin logging: ",
         "type": "enum",

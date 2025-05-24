@@ -516,6 +516,13 @@ class AudiobookAlbum(Agent.Album):
                 )
                 # Re-prioritize the poster to the first position
                 helper.metadata.posters.validate_keys([helper.thumb])
+        if Prefs['extra_cover_art']:
+            extra_covers = get_covers_from_audiobookcovers(helper.metadata.title)
+            for index, url in enumerate(extra_covers):
+                if url not in helper.metadata.posters or helper.force:
+                    helper.metadata.posters[url] = Proxy.Media(
+                        make_request(url, accept_json=False), sort_order=index + 10
+                    )
         # Rating.
         helper.set_metadata_rating()
 
@@ -533,6 +540,25 @@ class AudiobookAlbum(Agent.Album):
         except ValueError:
             return None
 
+def get_covers_from_audiobookcovers(query):
+    # Construct the search URL
+    search_url = "https://api.audiobookcovers.com/cover/bytext?q=" + String.Quote(query)
+
+    # Make the HTTP request
+    try:
+        response = HTTP.Request(search_url, timeout=10, immediate=True)
+        covers = json_decode(str(response))
+    except Exception as e:
+        log.error("Failed to fetch audiobook covers: %s", e)
+        return []
+
+    if isinstance(covers, list):
+        return [
+            c.get('versions', {}).get('png', {}).get('original')
+            for c in covers
+            if 'versions' in c and 'png' in c['versions'] and 'original' in c['versions']['png']
+        ]
+    return []
 
 # Common helpers
 
