@@ -16,6 +16,7 @@ import re
 from audnexuslogging import Logging
 from region_tools import RegionTool
 import urllib
+from asin_id3 import build_region_asin
 
 # Setup logger
 log = Logging()
@@ -72,6 +73,15 @@ class SearchTool(object):
                 log.info('ASIN found in filename')
                 self.check_for_region(filename_unquoted)
                 return filename_search_asin.group(0) + '_' + self.region_override
+            else:
+                log.debug('No ASIN found in filename')
+                log.debug('Checking in ID3 tags for ASIN')
+                # Check ID3 tags for ASIN
+                id3_asin = build_region_asin(filename_unquoted, self.prefs['region'])
+                if id3_asin:
+                    log.info('ASIN found in ID3 tags')
+                    self.check_for_region(id3_asin)
+                    return id3_asin
 
         # Check search query for ASIN
         # Default to album and use artist if no album
