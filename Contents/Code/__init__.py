@@ -29,6 +29,7 @@ else:  # the code is running outside of Plex
 # coding: utf-8
 import json
 # Import internal tools
+from region_tools import RegionTool
 from _version import version
 from audnexuslogging import Logging
 from search_tools import AlbumSearchTool, ArtistSearchTool, ScoreTool
@@ -54,9 +55,10 @@ def Start():
     HTTP.ClearCache()
     HTTP.CacheTime = CACHE_1WEEK
     HTTP.Headers['User-agent'] = (
-        'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.2; Trident/4.0;'
-        'SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729;'
-        'Media Center PC 6.0'
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)' +
+        ' Chrome/123.0.6312.86 Safari/537.36;' +
+        # needs to be updated after the pull request is merged
+        ' Plex-Audnexus/'+VERSION_NO+' (+https://github.com/binyaminyblatt/Audnexus.bundle/issues)'
     )
     HTTP.Headers['Accept-Encoding'] = 'gzip'
     log.separator(
@@ -313,6 +315,26 @@ class AudiobookAlbum(Agent.Album):
                     year=1969
                 )
             )
+            try:
+                # Pre-cache the data for the region tool to use
+                # ths should be faster than making the API call
+                # because it will use the cache to get the data
+                # this dosn't take into account the region overrides
+                # but it's a good start so we don't have to wait for the API call
+                # to get the data
+                region_helper = RegionTool(Prefs['region'], content_type='books', id=quick_match_asin)
+                HTTP.PreCache(region_helper.backup_api.get_id_url(),
+                              headers={'accept': 'application/json', 'User-Agent': HTTP.Headers['User-agent']},
+                              cacheTime=CACHE_1WEEK, timeout=10, immediate=True)
+                HTTP.PreCache(region_helper.get_id_url(),
+                              headers={'accept': 'application/json', 'User-Agent': HTTP.Headers['User-agent']},
+                              cacheTime=CACHE_1WEEK, timeout=10, immediate=True)
+            except Exception:
+                # This is a catch all for any errors that may occur
+                # when trying to pre-cache the data
+                # this is not a critical error and can be ignored
+                # if it occurs
+                pass
             log.info(
                 'Using quick match based on asin: '
                 '%s' % quick_match_asin
@@ -345,9 +367,9 @@ class AudiobookAlbum(Agent.Album):
         # 'A_N' is the separator between author and narrator
         separator_dict = {
             Locale.Language.English: {'T_A': 'by', 'A_N': 'w/'},
-            'de': {'T_A': 'von', 'A_N': 'mit'},
-            'fr': {'T_A': 'de', 'A_N': 'ac'},
-            'it': {'T_A': 'di', 'A_N': 'con'}
+            Locale.Language.German: {'T_A': 'von', 'A_N': 'mit'},
+            Locale.Language.French: {'T_A': 'de', 'A_N': 'ac'},
+            Locale.Language.Italian: {'T_A': 'di', 'A_N': 'con'}
         }
         local_separators = separator_dict[lang]
         log.debug(
