@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # plex debugging
 try:
     import plexhints  # noqa: F401
@@ -35,6 +36,7 @@ from audnexuslogging import Logging
 from search_tools import AlbumSearchTool, ArtistSearchTool, ScoreTool
 from time import sleep
 from update_tools import AlbumUpdateTool, ArtistUpdateTool
+from graphic_audio_exclusives import GraphicAudioMapper
 
 VERSION_NO = version
 
@@ -306,6 +308,26 @@ class AudiobookAlbum(Agent.Album):
         # Check if we can quick match based on asin
         quick_match_asin = search_helper.check_for_asin()
         if quick_match_asin:
+            if quick_match_asin.endswith('_GA'):
+                results.Append(
+                    MetadataSearchResult(
+                        id=quick_match_asin,
+                        lang=lang,
+                        name=quick_match_asin,
+                        score=100,
+                        year=1969
+                    )
+                )
+                log.info(
+                'Using quick match based on asin for graphic audio exclusives: '
+                '%s' % quick_match_asin
+                )
+
+                ga_url = 'https://raw.githubusercontent.com/binyaminyblatt/graphicaudio_scraper/refs/heads/main/results.json'
+                HTTP.PreCache(ga_url,
+                              headers={'accept': 'application/json', 'User-Agent': HTTP.Headers['User-agent']},
+                              cacheTime=CACHE_1WEEK, timeout=10, immediate=True)
+                return
             results.Append(
                 MetadataSearchResult(
                     id=quick_match_asin,
@@ -433,6 +455,16 @@ class AudiobookAlbum(Agent.Album):
             ),
             log_level="info"
         )
+        # Handle graphic audio exclusives
+        if metadata.id.endswith('_GA'):
+            ga_url = 'https://raw.githubusercontent.com/binyaminyblatt/graphicaudio_scraper/refs/heads/main/results.json'
+            maper = GraphicAudioMapper(ga_url, log, make_request)
+            if maper.apply_to_metadata(metadata, metadata.id.replace('_GA', '')):
+                log.info("Applied Graphic Audio exclusive metadata")
+            else:
+                log.warn("Failed to find Graphic Audio exclusive metadata")
+            return    
+
 
         # Instantiate update helper
         update_helper = AlbumUpdateTool(

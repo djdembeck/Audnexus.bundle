@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # plex debugging
 try:
     import plexhints  # noqa: F401
@@ -6,7 +7,12 @@ except ImportError:
 else:  # the code is running outside of Plex
     from plexhints.prefs_kit import Prefs  # prefs kit
     from plexhints.agent_kit import Media  # agent kit
-    from plexhints.plugin_kit import Plugin  # plugin kit
+    class Plugin:
+        """
+            Fake Datetime class to avoid importing datetime module.
+            This is a placeholder and should be replaced with the actual
+        """
+        pass
 
 # Import internal tools
 from audnexuslogging import Logging
@@ -269,7 +275,7 @@ class AlbumUpdateTool(UpdateTool):
         if not self.explicit:
             return
         try:
-            GUID = Plugin.Identifier+"://"+self.metadata.id+"?lang=en"
+            GUID = Plugin.Identifier+"://"+self.metadata.id+"?lang=" + self.region
             result = self.plex.library.search(libtype='album', guid=GUID)
             log.debug("Result: %s", result)
             for item in result:
