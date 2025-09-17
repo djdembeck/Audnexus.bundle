@@ -63,23 +63,23 @@ class SearchTool(object):
         """
         # Check filename for ASIN if content type is books
         if self.media.filename and self.content_type == 'books':
-            try:
-                # Provide a plain filename for ASIN search
-                filename_unquoted = urllib.unquote(
+            filename_unquoted = urllib.unquote(
                     self.media.filename).decode('utf8')
-                filename_search_asin = self.search_asin(filename_unquoted)
-            except Exception as e:
-                log.error('Error checking filename for ASIN: %s', e)
-                filename_unquoted = self.media.filename
-            
             self.check_for_region(filename_unquoted)
             if self.region_override == "GA":
                 # GraphicAudio → ISBN only
-                filename_search_isbn = self.search_isbn(filename_unquoted)
+                try:
+                    filename_search_isbn = self.search_isbn(filename_unquoted)
+                except Exception as e:
+                    log.error('Error checking filename for ISBN: %s', e)
                 if filename_search_isbn:
                     log.info('ISBN found in filename (GA)')
                     return filename_search_isbn.group(0) + '_' + self.region_override
             else:
+                try:
+                    filename_search_asin = self.search_asin(filename_unquoted)
+                except Exception as e:
+                    log.error('Error checking filename for ASIN: %s', e)
                 if filename_search_asin:
                     log.info('ASIN found in filename')
                     return filename_search_asin.group(0) + '_' + self.region_override
