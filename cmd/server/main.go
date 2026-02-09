@@ -1,12 +1,18 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
+	"time"
 
 	"github.com/djdembeck/audnexus-provider/internal/config"
+	"github.com/djdembeck/audnexus-provider/internal/handlers"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -71,20 +77,35 @@ func main() {
 	router.Use(gin.Recovery())
 	router.Use(loggerMiddleware())
 
-	// Health check endpoint
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status": "healthy",
-		})
-	})
+	// Register routes
+	handlers.RegisterProviderRoutes(router)
 
 	logger.Info("Server initialization complete")
-	logger.Infof("Listening on :%d", cfg.Port)
 
 	addr := ":" + strconv.Itoa(cfg.Port)
-	if err := router.Run(addr); err != nil {
-		logger.Fatalf("Failed to start server: %v", err)
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: router,
 	}
+
+	go func() {
+		logger.Infof("Listening on %s", addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Fatalf("Failed to start server: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	logger.Info("Shutting down server...")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		logger.Fatal("Server forced to shutdown:", err)
+	}
+	logger.Info("Server exiting")
 }
 
 func loggerMiddleware() gin.HandlerFunc {
