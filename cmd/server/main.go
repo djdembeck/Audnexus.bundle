@@ -4,7 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 
+	"github.com/djdembeck/audnexus-provider/internal/config"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -38,7 +40,29 @@ func main() {
 		os.Exit(0)
 	}
 
-	logger.Info("audnexus-provider starting...")
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		logger.Fatalf("Failed to load configuration: %v", err)
+	}
+
+	logger.Infof("audnexus-provider starting...")
+	logger.Infof("Region: %s", cfg.Region)
+	logger.Infof("Log Level: %s", cfg.LogLevel)
+	logger.Infof("Cache TTL: %d seconds", cfg.CacheTTL)
+	logger.Infof("Audnexus Timeout: %d seconds", cfg.AudnexusTimeout)
+
+	// Set log level from config
+	switch cfg.LogLevel {
+	case "DEBUG":
+		logger.SetLevel(logrus.DebugLevel)
+	case "INFO":
+		logger.SetLevel(logrus.InfoLevel)
+	case "WARN":
+		logger.SetLevel(logrus.WarnLevel)
+	case "ERROR":
+		logger.SetLevel(logrus.ErrorLevel)
+	}
 
 	// Set Gin to release mode in production
 	gin.SetMode(gin.ReleaseMode)
@@ -55,9 +79,10 @@ func main() {
 	})
 
 	logger.Info("Server initialization complete")
-	logger.Info("Listening on :8080")
+	logger.Infof("Listening on :%d", cfg.Port)
 
-	if err := router.Run(":8080"); err != nil {
+	addr := ":" + strconv.Itoa(cfg.Port)
+	if err := router.Run(addr); err != nil {
 		logger.Fatalf("Failed to start server: %v", err)
 	}
 }
