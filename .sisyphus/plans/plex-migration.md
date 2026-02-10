@@ -150,24 +150,24 @@ main (current: legacy Python)
 - Don't merge archive branch to main
 
 **Acceptance Criteria**:
-- [ ] `archive/legacy-python` branch exists
-- [ ] Branch has updated README with deprecation notice
-- [ ] `ARCHIVE.md` exists with documentation
-- [ ] Tag `v1.x.x-final` created
-- [ ] Branch is protected
+- [x] `archive/legacy-python` branch exists
+- [x] Branch has updated README with deprecation notice
+- [x] `ARCHIVE.md` exists with documentation
+- [x] Tag `v1.x.x-final` created
+- [x] Branch is protected
 
 **Commit**: YES (direct to archive branch)
 - Message: `docs: archive legacy Python implementation`
 - Files: README.md, ARCHIVE.md
 
 ### Definition of Done
-- [ ] Binary runs without external dependencies
-- [ ] All endpoints return valid Plex MediaContainer JSON
-- [ ] Manual testing confirms metadata retrieval works
-- [ ] All 10 regions tested
-- [ ] ASIN quick match tested
-- [ ] Feature parity checklist completed
-- [ ] Cross-compiled binaries available for download
+- [x] Binary runs without external dependencies
+- [x] All endpoints return valid Plex MediaContainer JSON
+- [x] Manual testing confirms metadata retrieval works
+- [x] All 10 regions tested
+- [x] ASIN quick match tested
+- [x] Feature parity checklist completed
+- [x] Cross-compiled binaries available for download
 
 ### Must Have
 - Go binary with built-in HTTP server
@@ -474,12 +474,12 @@ Final Step (Merge to main):
   - Current README: `README.md` (reference for content to preserve)
 
   **Acceptance Criteria**:
-  - [ ] `archive/legacy-python` branch exists on GitHub
-  - [ ] Branch has updated README with deprecation notice
-  - [ ] `ARCHIVE.md` created and committed
-  - [ ] Tag `v1.x.x-final` created and pushed
-  - [ ] Branch protection enabled
-  - [ ] `feature/go-migration` branch created for Go work
+  - [x] `archive/legacy-python` branch exists on GitHub
+  - [x] Branch has updated README with deprecation notice
+  - [x] `ARCHIVE.md` created and committed
+  - [x] Tag `v1.x.x-final` created and pushed
+  - [x] Branch protection enabled
+  - [x] `feature/go-migration` branch created for Go work
 
   **Agent-Executed QA Scenario**:
   ```
@@ -562,11 +562,11 @@ Final Step (Merge to main):
   - Current plugin: `Contents/Code/__init__.py` (understand features to migrate)
 
   **Acceptance Criteria**:
-  - [ ] Repository created and initialized
-  - [ ] Directory structure matches plan
-  - [ ] `go.mod` exists with module name
-  - [ ] `.gitignore` contains Go-specific entries
-  - [ ] `README.md` has basic setup instructions
+  - [x] Repository created and initialized
+  - [x] Directory structure matches plan
+  - [x] `go.mod` exists with module name
+  - [x] `.gitignore` contains Go-specific entries
+  - [x] `README.md` has basic setup instructions
 
   **Agent-Executed QA Scenario**:
   ```
@@ -620,11 +620,11 @@ Final Step (Merge to main):
   - Goreleaser: https://goreleaser.com/
 
   **Acceptance Criteria**:
-  - [ ] `go.mod` contains all dependencies
-  - [ ] `Makefile` has build, build-all, run, test, clean targets
-  - [ ] `go mod tidy` completes without errors
-  - [ ] `make build` creates binary
-  - [ ] Binary runs: `./audnexus-provider --help` shows usage
+  - [x] `go.mod` contains all dependencies
+  - [x] `Makefile` has build, build-all, run, test, clean targets
+  - [x] `go mod tidy` completes without errors
+  - [x] `make build` creates binary
+  - [x] Binary runs: `./audnexus-provider --help` shows usage
 
   **Agent-Executed QA Scenario**:
   ```
@@ -684,13 +684,13 @@ Final Step (Merge to main):
   - envconfig: https://github.com/kelseyhightower/envconfig
 
   **Acceptance Criteria**:
-  - [ ] `internal/config/config.go` exists
-  - [ ] Config struct with all 6 legacy preferences
-  - [ ] Service config (PORT, CACHE_TTL, etc.)
-  - [ ] `.env.example` documents all variables
-  - [ ] Validation works (invalid region returns error)
-  - [ ] Defaults match legacy plugin defaults
-  - [ ] `go test ./internal/config` passes
+  - [x] `internal/config/config.go` exists
+  - [x] Config struct with all 6 legacy preferences
+  - [x] Service config (PORT, CACHE_TTL, etc.)
+  - [x] `.env.example` documents all variables
+  - [x] Validation works (invalid region returns error)
+  - [x] Defaults match legacy plugin defaults
+  - [x] `go test ./internal/config` passes
 
   **Agent-Executed QA Scenario**:
   ```
@@ -760,13 +760,13 @@ Final Step (Merge to main):
   - Plex example: https://github.com/plexinc/tmdb-example-provider (for response format)
 
   **Acceptance Criteria**:
-  - [ ] `cmd/server/main.go` creates HTTP server
-  - [ ] `/health` endpoint returns `{"status":"healthy"}`
-  - [ ] `/audnexus` endpoint returns MediaProvider JSON
-  - [ ] Structured logging configured and outputs JSON
-  - [ ] Graceful shutdown handles SIGTERM/SIGINT
-  - [ ] In-memory cache initialized
-  - [ ] Server starts: `go run cmd/server/main.go`
+  - [x] `cmd/server/main.go` creates HTTP server
+  - [x] `/health` endpoint returns `{"status":"healthy"}`
+  - [x] `/audnexus` endpoint returns MediaProvider JSON
+  - [x] Structured logging configured and outputs JSON
+  - [x] Graceful shutdown handles SIGTERM/SIGINT
+  - [x] In-memory cache initialized
+  - [x] Server starts: `go run cmd/server/main.go`
 
   **Agent-Executed QA Scenario**:
   ```
@@ -830,13 +830,13 @@ Final Step (Merge to main):
   - Context: https://go.dev/blog/context
 
   **Acceptance Criteria**:
-  - [ ] `internal/api/audnexus.go` exists
-  - [ ] All 6 API methods implemented
-  - [ ] Retry logic with exponential backoff
-  - [ ] Timeout configurable via env var
-  - [ ] User-Agent header set correctly
-  - [ ] Error handling for 4xx/5xx
-  - [ ] Uses context.Context
+  - [x] `internal/api/audnexus.go` exists
+  - [x] All 6 API methods implemented
+  - [x] Retry logic with exponential backoff
+  - [x] Timeout configurable via env var
+  - [x] User-Agent header set correctly
+  - [x] Error handling for 4xx/5xx
+  - [x] Uses context.Context
 
   **Agent-Executed QA Scenario**:
   ```
@@ -898,14 +898,14 @@ Final Step (Merge to main):
   - Levenshtein: `github.com/agnivade/levenshtein`
 
   **Acceptance Criteria**:
-  - [ ] `ScoreAuthor` and `ScoreBook` functions work
-  - [ ] Levenshtein distance calculation accurate
-  - [ ] ASIN extraction regex works on various formats
-  - [ ] Title simplification logic matches legacy
-  - [ ] Tag mapping produces correct output
-  - [ ] Pre-order detection filters future dates
-  - [ ] `go test ./internal/services` passes
-  - [ ] `go test ./internal/utils` passes
+  - [x] `ScoreAuthor` and `ScoreBook` functions work
+  - [x] Levenshtein distance calculation accurate
+  - [x] ASIN extraction regex works on various formats
+  - [x] Title simplification logic matches legacy
+  - [x] Tag mapping produces correct output
+  - [x] Pre-order detection filters future dates
+  - [x] `go test ./internal/services` passes
+  - [x] `go test ./internal/utils` passes
 
   **Agent-Executed QA Scenario**:
   ```
@@ -961,14 +961,14 @@ Final Step (Merge to main):
   - MediaProvider spec: https://developer.plex.tv/pms/#section/API-Info/Metadata-Providers
 
   **Acceptance Criteria**:
-  - [ ] `POST /audnexus/library/metadata/matches` accepts search requests
-  - [ ] Artist search returns scored results
-  - [ ] Album search returns scored results with localized separators
-  - [ ] ASIN quick match bypasses search (score=100)
-  - [ ] Empty search returns empty MediaContainer
-  - [ ] Invalid type returns 400 error
-  - [ ] Search results cached
-  - [ ] `go test ./internal/handlers` passes
+  - [x] `POST /audnexus/library/metadata/matches` accepts search requests
+  - [x] Artist search returns scored results
+  - [x] Album search returns scored results with localized separators
+  - [x] ASIN quick match bypasses search (score=100)
+  - [x] Empty search returns empty MediaContainer
+  - [x] Invalid type returns 400 error
+  - [x] Search results cached
+  - [x] `go test ./internal/handlers` passes
 
   **Agent-Executed QA Scenario**:
   ```
@@ -1033,15 +1033,15 @@ Final Step (Merge to main):
   - Legacy update tools: `Contents/Code/update_tools.py`
 
   **Acceptance Criteria**:
-  - [ ] `GET /audnexus/library/metadata/{ratingKey}` returns metadata
-  - [ ] Artist metadata includes bio, image URL, genres, similar
-  - [ ] Book metadata includes summary, rating, date, publisher
-  - [ ] Tag mappings correct (authors→moods, narrators→styles)
-  - [ ] Preferences applied (sort order, title simplification)
-  - [ ] 404 returned for unknown ratingKey
-  - [ ] Image URLs are direct Audible CDN links
-  - [ ] Metadata cached
-  - [ ] `go test ./internal/handlers` passes
+  - [x] `GET /audnexus/library/metadata/{ratingKey}` returns metadata
+  - [x] Artist metadata includes bio, image URL, genres, similar
+  - [x] Book metadata includes summary, rating, date, publisher
+  - [x] Tag mappings correct (authors→moods, narrators→styles)
+  - [x] Preferences applied (sort order, title simplification)
+  - [x] 404 returned for unknown ratingKey
+  - [x] Image URLs are direct Audible CDN links
+  - [x] Metadata cached
+  - [x] `go test ./internal/handlers` passes
 
   **Agent-Executed QA Scenario**:
   ```
@@ -1120,16 +1120,16 @@ Final Step (Merge to main):
   - Original README: `README.md` (reference for content)
 
   **Acceptance Criteria**:
-  - [ ] `make build-all` creates binaries for all platforms
-  - [ ] Binaries run without external dependencies
-  - [ ] All 10 regions tested
-  - [ ] ASIN quick match tested
-  - [ ] Search scoring matches legacy behavior
-  - [ ] Tag mappings verified
-  - [ ] README.md is comprehensive
-  - [ ] All env vars documented
-  - [ ] GitHub Actions workflows work
-  - [ ] Git tag v1.0.0 created
+  - [x] `make build-all` creates binaries for all platforms
+  - [x] Binaries run without external dependencies
+  - [x] All 10 regions tested
+  - [x] ASIN quick match tested
+  - [x] Search scoring matches legacy behavior
+  - [x] Tag mappings verified
+  - [x] README.md is comprehensive
+  - [x] All env vars documented
+  - [x] GitHub Actions workflows work
+  - [x] Git tag v1.0.0 created
 
   **Agent-Executed QA Scenario**:
   ```
@@ -1225,7 +1225,7 @@ kill %1
 - [x] Cross-compiled binaries available
 - [x] Environment variables documented
 - [x] Manual testing completed
-- [ ] v1.0.0 tag created (create after merging to main)
+- [x] v1.0.0 tag created (create after merging to main)
 
 ---
 
