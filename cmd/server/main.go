@@ -11,8 +11,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/djdembeck/audnexus-provider/internal/api"
+	"github.com/djdembeck/audnexus-provider/internal/cache"
 	"github.com/djdembeck/audnexus-provider/internal/config"
 	"github.com/djdembeck/audnexus-provider/internal/handlers"
+	"github.com/djdembeck/audnexus-provider/internal/services"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -77,8 +80,15 @@ func main() {
 	router.Use(gin.Recovery())
 	router.Use(loggerMiddleware())
 
+	// Initialize cache and API client
+	appCache := cache.New()
+	apiClient := api.NewClient(cfg.AudnexusTimeout)
+	searchService := services.NewSearchService(apiClient, cfg)
+
 	// Register routes
 	handlers.RegisterProviderRoutes(router)
+	matchesHandler := handlers.NewMatchesHandler(searchService, appCache, cfg)
+	matchesHandler.RegisterRoutes(router)
 
 	logger.Info("Server initialization complete")
 
