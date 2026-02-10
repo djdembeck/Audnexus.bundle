@@ -84,11 +84,14 @@ func main() {
 	appCache := cache.New()
 	apiClient := api.NewClient(cfg.AudnexusTimeout)
 	searchService := services.NewSearchService(apiClient, cfg)
+	metadataService := services.NewMetadataService(apiClient, cfg)
 
 	// Register routes
 	handlers.RegisterProviderRoutes(router)
 	matchesHandler := handlers.NewMatchesHandler(searchService, appCache, cfg)
 	matchesHandler.RegisterRoutes(router)
+	metadataHandler := handlers.NewMetadataHandler(metadataService, appCache, cfg)
+	metadataHandler.RegisterRoutes(router)
 
 	logger.Info("Server initialization complete")
 
