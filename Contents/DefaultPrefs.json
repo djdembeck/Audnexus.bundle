@@ -31,6 +31,12 @@
         "default": "false"
     },
     {
+        "id": "simplify_series_title",
+        "label": "Simplify series titles (remove ' Series' from the end if it exists)",
+        "type": "bool",
+        "default": "false"
+    },
+    {
         "id": "logging_level",
         "label": "Level of plugin logging: ",
         "type": "enum",

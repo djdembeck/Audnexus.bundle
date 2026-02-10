@@ -203,13 +203,17 @@ class AlbumUpdateTool(UpdateTool):
         if 'rating' in response:
             self.rating = response['rating']
         if 'seriesPrimary' in response:
-            self.series = response['seriesPrimary']['name']
+            self.series = self.simplify_series_title(
+                response['seriesPrimary']['name']
+            )
             if 'position' in response['seriesPrimary']:
                 self.volume = self.volume_prefix(
                     response['seriesPrimary']['position']
                 )
         if 'seriesSecondary' in response:
-            self.series2 = response['seriesSecondary']['name']
+            self.series2 = self.simplify_series_title(
+                response['seriesSecondary']['name']
+            )
             if 'position' in response['seriesSecondary']:
                 self.volume2 = self.volume_prefix(
                     response['seriesSecondary']['position']
@@ -346,6 +350,18 @@ class AlbumUpdateTool(UpdateTool):
         album_title = album_title.strip()
 
         return album_title
+    
+    def simplify_series_title(self, series_title):
+        """
+            Simplifies the series titles (series 1 and 2) by removing
+            the word "Series" from the end if it exists.
+        """
+        if self.prefs['simplify_series_title']:
+            if series_title:
+                simplified_series_title = re.sub(r" Series$", '', series_title, flags=re.IGNORECASE)
+                return simplified_series_title
+        return series_title
+
 
     def volume_prefix(self, string):
         """
@@ -534,7 +550,7 @@ class TagTool:
 
     def add_authors_to_moods(self):
         """
-            Adds authors to moods, except for cases in contibutors list.
+            Adds authors to moods, except for cases in contributors list.
         """
         contributor_regex = '.+?(?= -)'
         if not self.helper.metadata.moods or self.helper.force:
