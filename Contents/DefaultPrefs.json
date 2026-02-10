@@ -31,10 +31,28 @@
         "default": "false"
     },
     {
+        "id": "extra_cover_art",
+        "label": "Download extra cover art (if available) from audiobookcovers.com Note: this will download a lot of cover art and may take a while",
+        "type": "bool",
+        "default": "false"
+    },
+    {
         "id": "logging_level",
         "label": "Level of plugin logging: ",
         "type": "enum",
         "values": ["DEBUG", "INFO", "WARN", "ERROR"],
-        "default": "WARN"
+        "default": "DEBUG"
+    },
+    {
+        "id": "audnex_api_url",
+        "label": "DO NOT OVERWRIDE Audnexus API URL (leave blank for default no traling /): https://api.audnex.us",
+        "type": "text",
+        "default": "https://api.audnex.us"
+    },
+    {
+        "id": "audimeta_api_url",
+        "label": "DO NOT OVERWRIDE AudiMeta API URL aka the backup api (leave blank for default no traling / ): https://audimeta.de",
+        "type": "text",
+        "default": "https://audimeta.de"
     }
 ]

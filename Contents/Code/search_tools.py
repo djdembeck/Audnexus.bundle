@@ -1,19 +1,35 @@
+# -*- coding: utf-8 -*-
+# plex debugging
+try:
+    import plexhints  # noqa: F401
+except ImportError:
+    pass
+else:  # the code is running outside of Plex
+    from plexhints.util_kit import String  # util kit
+    from plexhints.prefs_kit import Prefs  # prefs kit
+    from plexhints.agent_kit import Media  # agent kit
+    from functools import reduce
+
+
 from datetime import date
 import re
 # Import internal tools
-from logging import Logging
+from audnexuslogging import Logging
 from region_tools import RegionTool
 import urllib
+from asin_id3 import build_region_asin
 
 # Setup logger
 log = Logging()
 
 asin_regex = re.compile(r'(?=.\d)[A-Z\d]{10}')
 region_regex = re.compile(r'(?<=\[)[A-Za-z]{2}(?=\])')
+isbn_regex = re.compile(r'^(?:\d{9}[\dX]|97[89]\d{10})$')
 
 
-class SearchTool:
+class SearchTool(object):
     def __init__(self, content_type, lang, manual, media, prefs, results):
+        # type: (str, str, bool, Media.Album | Media.Artist, Prefs, list) -> None # type: ignore
         self.content_type = content_type
         self.lang = lang
         self.manual = manual
@@ -21,7 +37,7 @@ class SearchTool:
         self.prefs = prefs
         self.results = results
 
-    def build_url(self, query):
+    def build_url(self, query, backup=False):
         """
             Generates the URL string with search paramaters for API call.
         """
@@ -33,9 +49,11 @@ class SearchTool:
         # Setup region helper to get search URL
         region_helper = RegionTool(
             content_type=self.content_type, query=query, region=self.region_override)
-
-        search_url = region_helper.get_api_search_url(
-        ) if self.content_type == 'books' else region_helper.get_search_url()
+        if backup:
+            search_url = region_helper.backup_api.get_search_url()
+        else:
+            search_url = region_helper.get_search_url()
+        log.debug('Search URL: ' + search_url)
         self.log_search_url(search_url)
         return search_url
 
@@ -45,18 +63,35 @@ class SearchTool:
         """
         # Check filename for ASIN if content type is books
         if self.media.filename and self.content_type == 'books':
-            try:
-                # Provide a plain filename for ASIN search
-                filename_unquoted = urllib.unquote(
+            filename_unquoted = urllib.unquote(
                     self.media.filename).decode('utf8')
-                filename_search_asin = self.search_asin(filename_unquoted)
-            except Exception as e:
-                log.error('Error checking filename for ASIN: %s', e)
-
-            if filename_search_asin:
-                log.info('ASIN found in filename')
-                self.check_for_region(filename_unquoted)
-                return filename_search_asin.group(0) + '_' + self.region_override
+            self.check_for_region(filename_unquoted)
+            if self.region_override == "GA":
+                # GraphicAudio → ISBN only
+                try:
+                    filename_search_isbn = self.search_isbn(filename_unquoted)
+                except Exception as e:
+                    log.error('Error checking filename for ISBN: %s', e)
+                if filename_search_isbn:
+                    log.info('ISBN found in filename (GA)')
+                    return filename_search_isbn.group(0) + '_' + self.region_override
+            else:
+                try:
+                    filename_search_asin = self.search_asin(filename_unquoted)
+                except Exception as e:
+                    log.error('Error checking filename for ASIN: %s', e)
+                if filename_search_asin:
+                    log.info('ASIN found in filename')
+                    return filename_search_asin.group(0) + '_' + self.region_override
+                else:
+                    log.debug('No ASIN found in filename')
+                    log.debug('Checking in ID3 tags for ASIN')
+                    # Check ID3 tags for ASIN
+                    id3_asin = build_region_asin(filename_unquoted, self.prefs['region'])
+                    if id3_asin:
+                        log.info('ASIN found in ID3 tags')
+                        self.check_for_region(id3_asin)
+                        return id3_asin
 
         # Check search query for ASIN
         # Default to album and use artist if no album
@@ -93,7 +128,7 @@ class SearchTool:
         """
         log.debug('Search URL: %s', search_url)
 
-    def override_with_asin(self, match_asin, region=None):
+    def override_with_asin(self, match_asin, region=None, backup=False):
         """
             Overrides the search with an ASIN.
         """
@@ -109,14 +144,16 @@ class SearchTool:
         self.region_override = region if region else self.prefs['region']
         region_helper = RegionTool(
             content_type=self.content_type, query=url_param, region=self.region_override)
-
-        # Books use api search authors use audnexus search
-        if self.content_type == 'books':
-            search_url = region_helper.get_api_search_url()
+        if backup:
+            search_url = region_helper.backup_api.get_search_url()
         else:
-            # Set ID to ASIN
-            region_helper.id = asin
-            search_url = region_helper.get_id_url()
+            # Books use api search authors use audnexus search
+            if self.content_type == 'books':
+                search_url = region_helper.get_search_url()
+            else:
+                # Set ID to ASIN
+                region_helper.id = asin
+                search_url = region_helper.get_id_url()
 
         self.log_search_url(search_url)
         return search_url
@@ -149,6 +186,13 @@ class SearchTool:
         """
         if input:
             return re.search(asin_regex, input)
+
+    def search_isbn(self, input):
+        """
+            Searches for ISBN in a string.
+        """
+        if input:
+            return re.search(isbn_regex, input)
 
     def search_region(self, input):
         """
@@ -278,29 +322,54 @@ class AlbumSearchTool(SearchTool):
             Collects keys used for each item from API response,
             for Plex search results.
         """
-        search_results = []
-        for item in api_response['products']:
-            # Only append results which have valid keys
-            if item.viewkeys() >= {
-                "asin",
-                "authors",
-                "language",
-                "narrators",
-                "release_date",
-                "title"
-            }:
-                search_results.append(
-                    {
-                        'asin': item['asin'] + '_' + self.region_override,
-                        'author': item['authors'],
-                        'date': item['release_date'],
-                        'language': item['language'],
-                        'narrator': item['narrators'],
-                        'region': self.region_override,
-                        'title': item['title'],
-                    }
-                )
-        return search_results
+        if 'products' in api_response:
+            search_results = []
+            for item in api_response['products']:
+                # Only append results which have valid keys
+                if item.viewkeys() >= {
+                    "asin",
+                    "authors",
+                    "language",
+                    "narrators",
+                    "release_date",
+                    "title"
+                }:
+                    search_results.append(
+                        {
+                            'asin': item['asin'] + '_' + self.region_override,
+                            'author': item['authors'],
+                            'date': item['release_date'],
+                            'language': item['language'],
+                            'narrator': item['narrators'],
+                            'region': self.region_override,
+                            'title': item['title'],
+                        }
+                    )
+            return search_results
+        else:
+            search_results = []
+            for item in api_response:
+                # Only append results which have valid keys
+                if item.viewkeys() >= {
+                    "asin",
+                    "authors",
+                    "language",
+                    "narrators",
+                    "releaseDate",
+                    "title"
+                }:
+                    search_results.append(
+                        {
+                            'asin': item['asin'] + '_' + self.region_override,
+                            'author': item['authors'],
+                            'date': item['releaseDate'],
+                            'language': item['language'],
+                            'narrator': item['narrators'],
+                            'region': self.region_override,
+                            'title': item['title'],
+                        }
+                    )
+            return search_results
 
     def pre_search_logging(self):
         """
@@ -376,7 +445,7 @@ class ArtistSearchTool(SearchTool):
         )
         name = str_to_remove_regex.sub('', name)
         # Remove periods between double initials
-        initials_regex = "^((?:[A-Z]\.\s?)*[A-Z]\.(?!\S)).(\w+)"
+        initials_regex = r"^((?:[A-Z]\.\s?)*[A-Z]\.(?!\S)).(\w+)"
         initials_matched = re.search(initials_regex, name)
         if initials_matched:
             log.debug('Found initials to clean')
@@ -481,7 +550,7 @@ class ArtistSearchTool(SearchTool):
             log.error("No artist to validate")
 
 
-class ScoreTool:
+class ScoreTool(object):
     # Starting value for score before deductions are taken.
     INITIAL_SCORE = 100
     # Any score lower than this will be ignored.

@@ -5,9 +5,9 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>English</string>
 	<key>CFBundleExecutable</key>
-	<string>Audnexus Agent</string>
+	<string>Audnexus Agent With Backup API</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.plexapp.agents.audnexus</string>
+	<string>com.plexapp.agents.audnexuswithbackup</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleShortVersionString</key>
@@ -22,8 +22,7 @@
 	<string>Agent</string>
 	<key>PlexPluginMode</key>
 	<string>AlwaysOn</string>
+	<key>PlexPluginCodePolicy</key>
+  	<string>Elevated</string>
 </dict>
 </plist>
-
-
-

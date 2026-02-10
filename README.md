@@ -172,4 +172,4 @@ There are a few tricks to know about using fix match for books and authors:
 - Sorted by Series number and then book title.
 
 **This agent cannot create collections for your series'. 
-If you would like to set up automatic collections for book series', you can do so with the guide here: [Audnexus+Plex-Meta-Manager: Audiobook Series Collections](https://github.com/book-tools/audnexus-pmm-series)**
+If you would like to set up automatic collections for book series', you can do so with the guide here: [Audnexus + Kometa: Audiobook Series Collections](https://github.com/binyaminyblatt/audnexus-kometa-series)**
