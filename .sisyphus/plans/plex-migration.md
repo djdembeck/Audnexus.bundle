@@ -1215,17 +1215,17 @@ kill %1
 ```
 
 ### Final Checklist
-- [ ] All "Must Have" items implemented
-- [ ] All "Must NOT Have" items absent
-- [ ] Single binary runs without dependencies
-- [ ] All 10 regions supported
-- [ ] ASIN quick matching works
-- [ ] Fuzzy search scoring matches legacy
-- [ ] Tag mappings correct
-- [ ] Cross-compiled binaries available
-- [ ] Environment variables documented
-- [ ] Manual testing completed
-- [ ] v1.0.0 tag created
+- [x] All "Must Have" items implemented
+- [x] All "Must NOT Have" items absent
+- [x] Single binary runs without dependencies
+- [x] All 10 regions supported
+- [x] ASIN quick matching works
+- [x] Fuzzy search scoring matches legacy
+- [x] Tag mappings correct
+- [x] Cross-compiled binaries available
+- [x] Environment variables documented
+- [x] Manual testing completed
+- [ ] v1.0.0 tag created (create after merging to main)
 
 ---
 
