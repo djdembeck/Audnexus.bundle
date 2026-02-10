@@ -1,0 +1,45 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [main, develop, feature/*]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ['1.22', '1.23']
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go-version }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Run tests
+      run: go test -v ./...
+
+    - name: Build binary
+      run: go build -o audnexus-provider ./cmd/server
+
+    - name: Cross-compile
+      run: |
+        GOOS=linux GOARCH=amd64 go build -o bin/audnexus-provider-linux-amd64 ./cmd/server
+        GOOS=darwin GOARCH=amd64 go build -o bin/audnexus-provider-darwin-amd64 ./cmd/server
+        GOOS=windows GOARCH=amd64 go build -o bin/audnexus-provider-windows-amd64.exe ./cmd/server

@@ -1,0 +1,35 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+
+    - name: Build binaries
+      run: |
+        mkdir -p dist
+        GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/audnexus-provider-linux-amd64 ./cmd/server
+        GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/audnexus-provider-linux-arm64 ./cmd/server
+        GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/audnexus-provider-darwin-amd64 ./cmd/server
+        GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/audnexus-provider-darwin-arm64 ./cmd/server
+        GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/audnexus-provider-windows-amd64.exe ./cmd/server
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/*
+        generate_release_notes: true

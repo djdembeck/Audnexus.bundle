@@ -129,3 +129,30 @@ dmypy.json
 .pyre/
 
 .opencode
+
+# Go binaries and build artifacts
+/bin/
+/dist/
+*.exe
+*.test
+*.out
+
+# Environment and configuration
+.env
+.env.*
+
+# IDE and editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Dependencies (using modules, not vendor)
+vendor/
+
+# Logs
+*.log
+
+# OS artifacts
+.DS_Store
+Thumbs.db
