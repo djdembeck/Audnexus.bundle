@@ -1,6 +1,33 @@
 # Changelog
 
-All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.0.0] - 2026-02-09
+
+### Added
+- Initial Go implementation of Audnexus Provider
+- HTTP-based metadata provider for Plex
+- Support for all 10 Audible regions (au, ca, de, es, fr, in, it, jp, us, uk)
+- ASIN quick matching for direct lookups
+- Levenshtein distance fuzzy search scoring
+- In-memory caching with TTL
+- Environment variable configuration
+- Cross-platform builds (Linux, macOS, Windows)
+- RESTful API with three endpoints:
+  - GET /audnexus - Provider discovery
+  - POST /audnexus/library/metadata/matches - Search
+  - GET /audnexus/library/metadata/:ratingKey - Metadata retrieval
+- Graceful shutdown handling
+- Structured logging with configurable levels
+
+---
+
+## Legacy Python Agent Changelog
+
+All notable changes to the legacy Python agent will be documented below. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
 ### [1.3.2](https://github.com/djdembeck/Audnexus.bundle/compare/v1.3.1...v1.3.2) (2024-08-12)
 
