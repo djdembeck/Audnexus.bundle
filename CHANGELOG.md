@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## Unreleased
+
+### Features
+
+* **album-update:** store retained historical covers as selectable Plex posters
+* **album-update:** map Audnexus tags to Plex moods
+* **album-update:** use the dedicated similar-books endpoint
+* **prefs:** allow selecting a self-hosted or newer Audnexus API base URL
+
 ### [1.3.2](https://github.com/djdembeck/Audnexus.bundle/compare/v1.3.1...v1.3.2) (2024-08-12)
 
 

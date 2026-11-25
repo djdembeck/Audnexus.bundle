@@ -4,6 +4,7 @@ import json
 # Import internal tools
 from _version import version
 from logging import Logging
+from region_tools import DEFAULT_API_URL
 from search_tools import AlbumSearchTool, ArtistSearchTool, ScoreTool
 from time import sleep
 from update_tools import AlbumUpdateTool, ArtistUpdateTool
@@ -436,9 +437,45 @@ class AudiobookAlbum(Agent.Album):
         request = str(make_request(update_url))
         response = json_decode(request)
         helper.parse_api_response(response)
+        # The new endpoint family arrived with the tags field on /books.
+        # Skip the extra requests on deployments that still return the old
+        # payload, unless the user points the agent at a custom API.
+        if 'tags' in response or helper.api_url != DEFAULT_API_URL:
+            self.fetch_artwork(helper)
+            self.fetch_similar(helper)
 
         # Set date to date object
         helper.date = self.getDateFromString(helper.date)
+
+    def fetch_artwork(self, helper):
+        """
+            Fetches retained artwork for the Plex poster picker.
+        """
+        artwork_url = helper.build_artwork_url()
+        if not artwork_url:
+            return
+        try:
+            response = json_decode(str(make_request(artwork_url)))
+            helper.parse_artwork_response(response)
+        except Exception as err:
+            helper.artwork_ok = False
+            helper.artwork_urls = []
+            log.error('Failed to fetch artwork history: ' + artwork_url)
+            log.error(err)
+
+    def fetch_similar(self, helper):
+        """
+            Fetches similar books from the dedicated endpoint.
+        """
+        similar_url = helper.build_similar_url()
+        if not similar_url:
+            return
+        try:
+            response = json_decode(str(make_request(similar_url)))
+            helper.parse_similar_response(response)
+        except Exception as err:
+            log.error('Failed to fetch similar books: ' + similar_url)
+            log.error(err)
 
     def compile_metadata(self, helper):
         """
@@ -458,13 +495,34 @@ class AudiobookAlbum(Agent.Album):
         helper.set_metadata_summary()
         # Thumb.
         # Kept here because of Proxy
+        poster_urls = []
         if helper.thumb:
-            if helper.thumb not in helper.metadata.posters or helper.force:
-                helper.metadata.posters[helper.thumb] = Proxy.Media(
-                    make_request(helper.thumb), sort_order=0
-                )
-                # Re-prioritize the poster to the first position
-                helper.metadata.posters.validate_keys([helper.thumb])
+            poster_urls.append(helper.thumb)
+        for url in getattr(helper, 'artwork_urls', []):
+            if url and url not in poster_urls:
+                poster_urls.append(url)
+        for index, url in enumerate(poster_urls):
+            if url not in helper.metadata.posters or helper.force:
+                try:
+                    helper.metadata.posters[url] = Proxy.Media(
+                        make_request(url), sort_order=index
+                    )
+                except Exception as err:
+                    log.error('Failed to fetch poster: ' + url)
+                    log.error(err)
+        if poster_urls:
+            validate_keys = poster_urls
+            if not getattr(helper, 'artwork_ok', False):
+                # Artwork history is unavailable. Keep existing posters but
+                # put the current cover first.
+                validate_keys = []
+                if helper.thumb:
+                    validate_keys.append(helper.thumb)
+                for poster_url in helper.metadata.posters:
+                    if poster_url not in validate_keys:
+                        validate_keys.append(poster_url)
+            # Keep the current cover first, then history newest-first.
+            helper.metadata.posters.validate_keys(validate_keys)
         # Rating.
         helper.set_metadata_rating()
 

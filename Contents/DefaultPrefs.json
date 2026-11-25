@@ -7,6 +7,12 @@
         "default": "us"
     },
     {
+        "id": "api_url",
+        "label": "Audnexus API base URL (self-hosted or newer deployment)",
+        "type": "text",
+        "default": "https://api.audnex.us"
+    },
+    {
         "id": "keep_existing_genres",
         "label": "Keep existing genres in place",
         "type": "bool",
@@ -15,6 +21,12 @@
     {
         "id": "store_author_as_mood",
         "label": "Append authors as Mood tags",
+        "type": "bool",
+        "default": "true"
+    },
+    {
+        "id": "store_tags_as_moods",
+        "label": "Append Audnexus tags (topics, awards, moods) as Plex Mood tags",
         "type": "bool",
         "default": "true"
     },

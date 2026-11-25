@@ -2,7 +2,7 @@ from datetime import date
 import re
 # Import internal tools
 from logging import Logging
-from region_tools import RegionTool
+from region_tools import RegionTool, get_api_url
 import urllib
 
 # Setup logger
@@ -19,6 +19,7 @@ class SearchTool:
         self.manual = manual
         self.media = media
         self.prefs = prefs
+        self.api_url = get_api_url(self.prefs)
         self.results = results
 
     def build_url(self, query):
@@ -32,7 +33,10 @@ class SearchTool:
 
         # Setup region helper to get search URL
         region_helper = RegionTool(
-            content_type=self.content_type, query=query, region=self.region_override)
+            content_type=self.content_type,
+            query=query,
+            region=self.region_override,
+            base_url=self.api_url)
 
         search_url = region_helper.get_api_search_url(
         ) if self.content_type == 'books' else region_helper.get_search_url()
@@ -108,7 +112,10 @@ class SearchTool:
         # Setup region helper to get search URL
         self.region_override = region if region else self.prefs['region']
         region_helper = RegionTool(
-            content_type=self.content_type, query=url_param, region=self.region_override)
+            content_type=self.content_type,
+            query=url_param,
+            region=self.region_override,
+            base_url=self.api_url)
 
         # Books use api search authors use audnexus search
         if self.content_type == 'books':

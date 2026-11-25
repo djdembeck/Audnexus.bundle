@@ -1,6 +1,6 @@
 # Import internal tools
 from logging import Logging
-from region_tools import RegionTool
+from region_tools import RegionTool, get_api_url
 import re
 import struct
 import urllib
@@ -8,6 +8,10 @@ import os
 
 # Setup logger
 log = Logging()
+
+# Keep the poster picker useful instead of mirroring the entire history.
+MAX_HISTORY_POSTERS = 10
+MAX_SIMILAR_BOOKS = 10
 
 
 class UpdateTool:
@@ -18,6 +22,7 @@ class UpdateTool:
         self.media = media
         self.metadata = metadata
         self.prefs = prefs
+        self.api_url = get_api_url(self.prefs)
         self.region = self.extract_region_from_id()
 
     def build_url(self):
@@ -28,11 +33,32 @@ class UpdateTool:
         self.region_override = self.get_preferred_region()
         # Set the region helper
         region_helper = RegionTool(
-            region=self.region_override, content_type=self.content_type, id=self.extract_asin_from_id())
+            region=self.region_override,
+            content_type=self.content_type,
+            id=self.extract_asin_from_id(),
+            base_url=self.api_url)
 
         update_url = region_helper.get_id_url()
         log.debug('Update URL: ' + update_url)
         return update_url
+
+    def build_artwork_url(self):
+        """
+            Builds the retained-artwork URL for a book.
+        """
+        if self.content_type != 'books':
+            return None
+        base_url, _, query = self.build_url().partition('?')
+        return base_url + '/artwork?' + query
+
+    def build_similar_url(self):
+        """
+            Builds the expanded similar-books URL for a book.
+        """
+        if self.content_type != 'books':
+            return None
+        base_url, _, query = self.build_url().partition('?')
+        return base_url + '/similar?' + query + '&expand=books'
 
     def cleanup_html(self):
         """
@@ -220,12 +246,110 @@ class AlbumUpdateTool(UpdateTool):
             self.synopsis = response['summary']
         if 'image' in response:
             self.thumb = response['image']
+        if 'tags' in response:
+            self.tags = response['tags']
         if 'similar' in response:
             self.similar = response['similar']
         if 'subtitle' in response:
             self.subtitle = response['subtitle']
         if 'title' in response:
             self.title = response['title']
+
+    def parse_artwork_response(self, response):
+        """
+            Collects retained cover images, newest first.
+        """
+        self.artwork_ok = False
+        self.artwork_urls = []
+        if not isinstance(response, dict):
+            return
+        items = response.get('items')
+        if not isinstance(items, list):
+            return
+        self.artwork_ok = True
+
+        # The API reports each rendition as a separate asset. Prefer the
+        # highest-quality rendition when the book has one, so the current
+        # 500px and 1024px covers don't both appear in Plex. 500-only items
+        # are skipped when a 1024 rendition exists: they are normally the
+        # same artwork at a lower resolution, and their different image IDs
+        # make them impossible to deduplicate reliably.
+        has_1024 = False
+        for item in items:
+            for rendition in item.get('renditions') or []:
+                if (rendition.get('rendition') == '1024' and
+                        rendition.get('sourceUrl')):
+                    has_1024 = True
+                    break
+            if has_1024:
+                break
+
+        current_image_id = self.get_amazon_image_id(self.thumb)
+        seen_urls = set()
+        for item in items:
+            legacy = item.get('legacy') or {}
+            url = legacy.get('storedUrl')
+            image_id = item.get('imageId')
+
+            if not url:
+                renditions = item.get('renditions') or []
+                preferred = None
+                for rendition in renditions:
+                    if (rendition.get('rendition') == '1024' and
+                            rendition.get('sourceUrl')):
+                        preferred = rendition
+                        break
+                if not preferred and not has_1024:
+                    for rendition in renditions:
+                        if (rendition.get('rendition') == '500' and
+                                rendition.get('sourceUrl')):
+                            preferred = rendition
+                            break
+                if not preferred and not has_1024:
+                    for rendition in renditions:
+                        if rendition.get('sourceUrl'):
+                            preferred = rendition
+                            break
+                if preferred:
+                    url = preferred.get('sourceUrl')
+
+            if not url or url in seen_urls or url == self.thumb:
+                continue
+
+            if not image_id:
+                image_id = self.get_amazon_image_id(url)
+            if current_image_id and image_id == current_image_id:
+                continue
+
+            seen_urls.add(url)
+            self.artwork_urls.append(url)
+            if len(self.artwork_urls) >= MAX_HISTORY_POSTERS:
+                break
+
+    def parse_similar_response(self, response):
+        """
+            Collects similar book titles for Plex's similar/moods fields.
+        """
+        self.similar = None
+        if not isinstance(response, dict):
+            return
+        books = response.get('books') or []
+        if not isinstance(books, list):
+            return
+        similar = []
+        for book in books[:MAX_SIMILAR_BOOKS]:
+            title = (book.get('title') or '').strip()
+            if title:
+                similar.append({'name': title})
+        self.similar = similar
+
+    def get_amazon_image_id(self, url):
+        """
+            Extracts the stable Amazon image ID from a cover URL.
+        """
+        if not url or '/images/I/' not in url:
+            return None
+        return url.split('/images/I/', 1)[1].split('.', 1)[0].split('/', 1)[0]
 
     def set_metadata_date(self):
         """
@@ -239,6 +363,8 @@ class AlbumUpdateTool(UpdateTool):
         """
             Sets empty variables.
         """
+        self.artwork_ok = False
+        self.artwork_urls = []
         self.date = None
         self.genres = None
         self.rating = None
@@ -246,6 +372,7 @@ class AlbumUpdateTool(UpdateTool):
         self.series2 = ''
         self.similar = None
         self.subtitle = ''
+        self.tags = None
         self.thumb = ''
         self.volume = ''
         self.volume2 = ''
@@ -312,6 +439,9 @@ class AlbumUpdateTool(UpdateTool):
             tagger.add_authors_to_moods()
         # Series.
         tagger.add_series_to_moods()
+        # Tags (topics, awards, editorial, moods).
+        if self.prefs['store_tags_as_moods']:
+            tagger.add_tags_to_moods()
         # Similar.
         tagger.add_similar()
 
@@ -552,13 +682,57 @@ class TagTool:
         if self.helper.series2:
             self.helper.metadata.moods.add("Series: " + self.helper.series2)
 
+    def add_tags_to_moods(self):
+        """
+            Adds Audnexus tags to Plex moods.
+        """
+        tags = getattr(self.helper, 'tags', None)
+        if not tags:
+            return
+        prefixes = {
+            'editorial': 'Editorial: ',
+            'award': 'Award: ',
+            'franchise': 'Franchise: ',
+            'goodreads': 'Goodreads: ',
+            'social': 'Social: ',
+            'duration': 'Duration: ',
+            'instareads': 'Instareads: ',
+            'other': 'Tag: ',
+        }
+        for tag in tags:
+            if isinstance(tag, dict):
+                name = (tag.get('name') or '').strip()
+                tag_type = tag.get('type')
+            else:
+                name = str(tag).strip()
+                tag_type = None
+            if not name:
+                continue
+            prefix = prefixes.get(tag_type, '')
+            self.helper.metadata.moods.add(prefix + name)
+
     def add_similar(self):
         """
-            Adds similar items.
+            Adds similar items, falling back to moods for album metadata.
         """
-        if self.helper.similar:
-            for item in self.helper.similar:
-                self.helper.metadata.similar.add(item['name'])
+        if not self.helper.similar:
+            return
+        names = []
+        for item in self.helper.similar:
+            if isinstance(item, dict):
+                name = item.get('name')
+            else:
+                name = item
+            if name:
+                names.append(name.strip())
+        if not names:
+            return
+        try:
+            for name in names:
+                self.helper.metadata.similar.add(name)
+        except AttributeError:
+            for name in names:
+                self.helper.metadata.moods.add('Similar: ' + name)
 
     def clear_moods(self):
         """

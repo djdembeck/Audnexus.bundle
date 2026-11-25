@@ -42,6 +42,20 @@ available_regions = {
 }
 
 
+DEFAULT_API_URL = 'https://api.audnex.us'
+
+
+def get_api_url(prefs):
+    """
+        Returns the configured Audnexus API base URL.
+    """
+    try:
+        api_url = prefs['api_url']
+    except (KeyError, TypeError):
+        api_url = None
+    return (api_url or DEFAULT_API_URL).strip().rstrip('/')
+
+
 class RegionTool:
     """
         Used to generate URLs for different regions for both Audible and Audnexus.
@@ -57,13 +71,16 @@ class RegionTool:
             Must be pre-formatted for Audnexus, e.g. '&page=1&limit=10'
         region : str
             The region code to generate the URL for.
+        base_url : str, optional
+            Audnexus API base URL. Defaults to the public API.
     """
 
-    def __init__(self, region, content_type, id=None, query=None):
+    def __init__(self, region, content_type, id=None, query=None, base_url=None):
         self.region = region
         self.id = id
         self.query = query
         self.content_type = content_type
+        self.base_url = (base_url or DEFAULT_API_URL).strip().rstrip('/')
 
     def get_region(self):
         """
@@ -94,7 +111,7 @@ class RegionTool:
         """
             Returns the content type URL.
         """
-        return 'https://api.audnex.us' + '/' + self.content_type
+        return self.base_url + '/' + self.content_type
 
     def get_search_url(self):
         """
