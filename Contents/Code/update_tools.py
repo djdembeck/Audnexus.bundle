@@ -9,6 +9,10 @@ import re
 import struct
 import urllib
 import os
+try:
+    from urlparse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
 
 # Setup logger
 log = Logging()
@@ -419,7 +423,7 @@ class AlbumUpdateTool(UpdateTool):
                         artwork_size = 0
                     break
             if not artwork_size and stored_ok:
-                stored_name = url.split('?', 1)[0].rsplit('/', 1)[-1]
+                stored_name = urlparse(url).path.rsplit('/', 1)[-1]
                 stored_rendition = re.search(r'_SL(\d+)', stored_name)
                 if stored_rendition:
                     artwork_size = int(stored_rendition.group(1))
