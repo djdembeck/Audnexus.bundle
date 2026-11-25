@@ -38,7 +38,7 @@
     },
     {
         "id": "poster_order",
-        "label": "Default poster: ",
+        "label": "Default cover art: ",
         "type": "enum",
         "values": [
             "Most recent cover",
