@@ -587,13 +587,19 @@ class AudiobookAlbum(Agent.Album):
                     return fallback, data
             return None, None
 
+        available_urls = []
+
         def set_cached_order(url, order):
+            if url in available_urls:
+                return
             try:
                 helper.metadata.posters[url].sort_order = order
             except Exception:
                 pass
 
-        available_urls = []
+        def append_available(url):
+            if url and url not in available_urls:
+                available_urls.append(url)
         for index, url in enumerate(poster_urls):
             fallback = helper.artwork_fallbacks.get(url)
             cached_url = None
@@ -609,31 +615,37 @@ class AudiobookAlbum(Agent.Album):
                         skip_fallback=(cached_url == fallback and
                                         not helper.force))
                     if data is not None:
-                        try:
-                            helper.metadata.posters[poster_url] = Proxy.Media(
-                                data, sort_order=index
-                            )
-                            available_urls.append(poster_url)
-                        except Exception:
-                            log.error('Failed to refresh poster (%s)' % (
-                                describe_url(poster_url)))
-                            set_cached_order(cached_url, index)
-                            available_urls.append(cached_url)
+                        if poster_url in available_urls:
+                            append_available(poster_url)
+                        else:
+                            try:
+                                helper.metadata.posters[poster_url] = Proxy.Media(
+                                    data, sort_order=index
+                                )
+                                append_available(poster_url)
+                            except Exception:
+                                log.error('Failed to refresh poster (%s)' % (
+                                    describe_url(poster_url)))
+                                set_cached_order(cached_url, index)
+                                append_available(cached_url)
                     else:
                         set_cached_order(cached_url, index)
-                        available_urls.append(cached_url)
+                        append_available(cached_url)
                 else:
                     set_cached_order(cached_url, index)
-                    available_urls.append(cached_url)
+                    append_available(cached_url)
                 continue
             poster_url, data = fetch_poster(url, fallback)
             if data is None:
+                continue
+            if poster_url in available_urls:
+                append_available(poster_url)
                 continue
             try:
                 helper.metadata.posters[poster_url] = Proxy.Media(
                     data, sort_order=index
                 )
-                available_urls.append(poster_url)
+                append_available(poster_url)
             except Exception:
                 log.error('Failed to fetch poster (%s)' % (
                     describe_url(poster_url)))

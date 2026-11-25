@@ -419,22 +419,9 @@ class AlbumUpdateTool(UpdateTool):
                         artwork_size = 0
                     break
             if not artwork_size and stored_ok:
-                stored_image_id = self.get_amazon_image_id(url)
-                if stored_image_id:
-                    for rendition in renditions:
-                        if not isinstance(rendition, dict):
-                            continue
-                        source = rendition.get('sourceUrl')
-                        if (isinstance(source, STRING_TYPES) and source and
-                                self.get_amazon_image_id(source) ==
-                                stored_image_id):
-                            try:
-                                candidate_size = int(
-                                    rendition.get('rendition'))
-                            except (TypeError, ValueError):
-                                continue
-                            if candidate_size > artwork_size:
-                                artwork_size = candidate_size
+                stored_rendition = re.search(r'_SL(\d+)', url)
+                if stored_rendition:
+                    artwork_size = int(stored_rendition.group(1))
             if item_image_id:
                 seen_image_ids.add(item_image_id)
             seen_urls.add(url)
