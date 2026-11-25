@@ -300,8 +300,7 @@ class AlbumUpdateTool(UpdateTool):
             if url in seen_urls or url == self.thumb:
                 continue
             image_id = item.get('imageId')
-            if (not isinstance(image_id, (str, type(u''))) or
-                    not image_id or url != stored_url):
+            if not isinstance(image_id, (str, type(u''))) or not image_id:
                 image_id = self.get_amazon_image_id(url)
             if current_image_id and image_id == current_image_id:
                 continue
@@ -326,13 +325,15 @@ class AlbumUpdateTool(UpdateTool):
                     continue
                 source = rendition.get('sourceUrl')
                 if (rendition.get('rendition') == preferred and
-                        isinstance(source, (str, type(u''))) and source):
+                        isinstance(source, (str, type(u''))) and source and
+                        is_approved_artwork_url(source, self.api_url)):
                     return source
         for rendition in renditions:
             if not isinstance(rendition, dict):
                 continue
             source = rendition.get('sourceUrl')
-            if isinstance(source, (str, type(u''))) and source:
+            if (isinstance(source, (str, type(u''))) and source and
+                    is_approved_artwork_url(source, self.api_url)):
                 return source
         return None
 
