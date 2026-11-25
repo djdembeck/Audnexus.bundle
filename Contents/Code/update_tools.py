@@ -33,6 +33,12 @@ class UpdateTool:
         self.prefs = prefs
         self.api_url = get_api_url(self.prefs)
         self.region = self.extract_region_from_id()
+        self.tags = []
+        self.similar = []
+        self.similar_ok = False
+        self.artwork_urls = []
+        self.artwork_fallbacks = {}
+        self.artwork_ok = False
 
     def build_url(self):
         """
@@ -509,7 +515,7 @@ class AlbumUpdateTool(UpdateTool):
         if self.force:
             tagger.clear_moods(
                 keep_similar=(store_similar and
-                              not getattr(self, 'similar_ok', False)))
+                              not self.similar_ok))
             tagger.clear_styles()
         elif not store_similar:
             # Clear old recommendations before adding other moods so a
@@ -531,7 +537,7 @@ class AlbumUpdateTool(UpdateTool):
         # Similar books. Replace only when the dedicated response was valid.
         if store_similar:
             tagger.add_similar_moods(
-                replace=getattr(self, 'similar_ok', False))
+                replace=self.similar_ok)
 
     def set_metadata_title(self):
         """
@@ -774,7 +780,7 @@ class TagTool:
         """
             Adds Audnexus tags to Plex moods.
         """
-        tags = getattr(self.helper, 'tags', None)
+        tags = self.helper.tags
         if not isinstance(tags, list):
             return
         prefixes = {

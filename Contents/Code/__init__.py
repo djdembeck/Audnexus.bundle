@@ -543,7 +543,7 @@ class AudiobookAlbum(Agent.Album):
         poster_urls = []
         if helper.thumb:
             poster_urls.append(helper.thumb)
-        for url in getattr(helper, 'artwork_urls', []):
+        for url in helper.artwork_urls:
             if url and url not in poster_urls:
                 poster_urls.append(url)
 
@@ -559,7 +559,7 @@ class AudiobookAlbum(Agent.Album):
 
         available_urls = []
         for index, url in enumerate(poster_urls):
-            fallback = getattr(helper, 'artwork_fallbacks', {}).get(url)
+            fallback = helper.artwork_fallbacks.get(url)
             cached_url = None
             if url in helper.metadata.posters:
                 cached_url = url
@@ -600,7 +600,7 @@ class AudiobookAlbum(Agent.Album):
                     describe_url(poster_url), err))
 
         if available_urls:
-            if getattr(helper, 'artwork_ok', False):
+            if helper.artwork_ok:
                 validate_keys = available_urls
             else:
                 # Artwork history is unavailable. Keep existing posters but
@@ -697,7 +697,10 @@ def make_artwork_request(url, api_url):
                         get_header(response.headers, 'location'))
             content_type = (get_header(response.headers, 'Content-Type') or
                             get_header(response.headers, 'content-type') or '')
-            status = getattr(response, 'status', None)
+            try:
+                status = response.status
+            except AttributeError:
+                status = None
             if status is not None:
                 try:
                     status = int(status)
