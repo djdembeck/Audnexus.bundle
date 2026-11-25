@@ -269,21 +269,10 @@ class AlbumUpdateTool(UpdateTool):
         self.artwork_ok = True
 
         # The API reports each rendition as a separate asset. Prefer the
-        # highest-quality rendition when the book has one, so the current
-        # 500px and 1024px covers don't both appear in Plex. 500-only items
-        # are skipped when a 1024 rendition exists: they are normally the
-        # same artwork at a lower resolution, and their different image IDs
-        # make them impossible to deduplicate reliably.
-        has_1024 = False
-        for item in items:
-            for rendition in item.get('renditions') or []:
-                if (rendition.get('rendition') == '1024' and
-                        rendition.get('sourceUrl')):
-                    has_1024 = True
-                    break
-            if has_1024:
-                break
-
+        # highest-quality rendition within an item, but keep distinct
+        # 500px-only history entries. Rendition IDs can differ even when
+        # the artwork is related, so a book-wide 1024 filter would drop
+        # real history.
         current_image_id = self.get_amazon_image_id(self.thumb)
         seen_urls = set()
         for item in items:
@@ -299,13 +288,13 @@ class AlbumUpdateTool(UpdateTool):
                             rendition.get('sourceUrl')):
                         preferred = rendition
                         break
-                if not preferred and not has_1024:
+                if not preferred:
                     for rendition in renditions:
                         if (rendition.get('rendition') == '500' and
                                 rendition.get('sourceUrl')):
                             preferred = rendition
                             break
-                if not preferred and not has_1024:
+                if not preferred:
                     for rendition in renditions:
                         if rendition.get('sourceUrl'):
                             preferred = rendition
@@ -328,20 +317,28 @@ class AlbumUpdateTool(UpdateTool):
 
     def parse_similar_response(self, response):
         """
-            Collects similar book titles for Plex's similar/moods fields.
+            Collects similar book titles from the dedicated endpoint.
+            Leaves inline recommendations in place when the response is
+            missing or malformed.
         """
-        self.similar = None
+        self.similar_ok = False
         if not isinstance(response, dict):
             return
-        books = response.get('books') or []
+        books = response.get('books')
         if not isinstance(books, list):
             return
         similar = []
         for book in books[:MAX_SIMILAR_BOOKS]:
-            title = (book.get('title') or '').strip()
+            if not isinstance(book, dict):
+                continue
+            title = book.get('title')
+            if not isinstance(title, (str, type(u''))):
+                continue
+            title = title.strip()
             if title:
                 similar.append({'name': title})
         self.similar = similar
+        self.similar_ok = True
 
     def get_amazon_image_id(self, url):
         """
@@ -371,6 +368,7 @@ class AlbumUpdateTool(UpdateTool):
         self.series = ''
         self.series2 = ''
         self.similar = None
+        self.similar_ok = False
         self.subtitle = ''
         self.tags = None
         self.thumb = ''
@@ -442,8 +440,8 @@ class AlbumUpdateTool(UpdateTool):
         # Tags (topics, awards, editorial, moods).
         if self.prefs['store_tags_as_moods']:
             tagger.add_tags_to_moods()
-        # Similar.
-        tagger.add_similar()
+        # Similar books. Replace only when the dedicated response was valid.
+        tagger.add_similar_moods(replace=getattr(self, 'similar_ok', False))
 
     def set_metadata_title(self):
         """
@@ -687,7 +685,7 @@ class TagTool:
             Adds Audnexus tags to Plex moods.
         """
         tags = getattr(self.helper, 'tags', None)
-        if not tags:
+        if not isinstance(tags, list):
             return
         prefixes = {
             'editorial': 'Editorial: ',
@@ -700,16 +698,49 @@ class TagTool:
             'other': 'Tag: ',
         }
         for tag in tags:
-            if isinstance(tag, dict):
-                name = (tag.get('name') or '').strip()
-                tag_type = tag.get('type')
-            else:
-                name = str(tag).strip()
-                tag_type = None
-            if not name:
+            try:
+                if isinstance(tag, dict):
+                    name_value = tag.get('name')
+                    tag_type = tag.get('type')
+                else:
+                    name_value = tag
+                    tag_type = None
+                if not isinstance(name_value, (str, type(u''))):
+                    continue
+                name = name_value.strip()
+                if not name:
+                    continue
+                if not isinstance(tag_type, (str, type(u''))):
+                    tag_type = None
+                prefix = prefixes.get(tag_type, '')
+                self.helper.metadata.moods.add(prefix + name)
+            except Exception:
                 continue
-            prefix = prefixes.get(tag_type, '')
-            self.helper.metadata.moods.add(prefix + name)
+
+    def add_similar_moods(self, replace=False):
+        """
+            Adds similar books as agent-owned Similar: moods.
+        """
+        if replace:
+            for mood in list(self.helper.metadata.moods):
+                if (isinstance(mood, (str, type(u''))) and
+                        mood.startswith('Similar: ')):
+                    try:
+                        self.helper.metadata.moods.remove(mood)
+                    except Exception:
+                        pass
+        if not self.helper.similar:
+            return
+        for item in self.helper.similar:
+            if isinstance(item, dict):
+                name = item.get('name')
+            else:
+                name = item
+            if not isinstance(name, (str, type(u''))):
+                continue
+            name = name.strip()
+            if name:
+                self.helper.metadata.moods.add('Similar: ' + name)
 
     def add_similar(self):
         """
@@ -723,8 +754,10 @@ class TagTool:
                 name = item.get('name')
             else:
                 name = item
-            if name:
-                names.append(name.strip())
+            if isinstance(name, (str, type(u''))):
+                name = name.strip()
+                if name:
+                    names.append(name)
         if not names:
             return
         try:

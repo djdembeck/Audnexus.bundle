@@ -7,12 +7,27 @@ from logging import Logging
 from region_tools import DEFAULT_API_URL
 from search_tools import AlbumSearchTool, ArtistSearchTool, ScoreTool
 from time import sleep
+try:
+    from urlparse import urlparse, urljoin
+except ImportError:
+    from urllib.parse import urlparse, urljoin
 from update_tools import AlbumUpdateTool, ArtistUpdateTool
 
 VERSION_NO = version
 
 # Score required to short-circuit matching and stop searching.
 GOOD_SCORE = 98
+
+# Artwork references from Audnexus are fetched server-side. Only allow the
+# known Amazon image hosts and the explicitly configured Audnexus host.
+APPROVED_ARTWORK_HOSTS = (
+    'm.media-amazon.com',
+    'images-na.ssl-images-amazon.com',
+    'images-eu.ssl-images-amazon.com',
+    'images-ca.ssl-images-amazon.com',
+    'images-fe.ssl-images-amazon.com',
+    'images-jp.ssl-images-amazon.com',
+)
 
 # Setup logger
 log = Logging()
@@ -501,22 +516,43 @@ class AudiobookAlbum(Agent.Album):
         for url in getattr(helper, 'artwork_urls', []):
             if url and url not in poster_urls:
                 poster_urls.append(url)
+
+        available_urls = []
         for index, url in enumerate(poster_urls):
-            if url not in helper.metadata.posters or helper.force:
-                try:
-                    helper.metadata.posters[url] = Proxy.Media(
-                        make_request(url), sort_order=index
-                    )
-                except Exception as err:
-                    log.error('Failed to fetch poster: ' + url)
-                    log.error(err)
-        if poster_urls:
-            validate_keys = poster_urls
-            if not getattr(helper, 'artwork_ok', False):
+            if url in helper.metadata.posters:
+                available_urls.append(url)
+                if index == 0 and not helper.force:
+                    # Re-add the current cover so its sort order is current.
+                    data = make_artwork_request(url, helper.api_url)
+                    if data is not None:
+                        try:
+                            helper.metadata.posters[url] = Proxy.Media(
+                                data, sort_order=0
+                            )
+                        except Exception as err:
+                            log.error('Failed to refresh poster: ' + url)
+                            log.error(err)
+                continue
+            data = make_artwork_request(url, helper.api_url)
+            if data is None:
+                continue
+            try:
+                helper.metadata.posters[url] = Proxy.Media(
+                    data, sort_order=index
+                )
+                available_urls.append(url)
+            except Exception as err:
+                log.error('Failed to fetch poster: ' + url)
+                log.error(err)
+
+        if available_urls:
+            if getattr(helper, 'artwork_ok', False):
+                validate_keys = available_urls
+            else:
                 # Artwork history is unavailable. Keep existing posters but
                 # put the current cover first.
                 validate_keys = []
-                if helper.thumb:
+                if helper.thumb in helper.metadata.posters:
                     validate_keys.append(helper.thumb)
                 for poster_url in helper.metadata.posters:
                     if poster_url not in validate_keys:
@@ -551,6 +587,60 @@ def json_decode(output):
         return json.loads(output, encoding="utf-8")
     except AttributeError:
         return None
+
+
+def is_approved_artwork_url(url, api_url):
+    """
+        Returns True when an artwork URL targets an approved origin.
+    """
+    try:
+        parsed = urlparse(url)
+        api_host = urlparse(api_url).hostname
+    except (TypeError, ValueError, AttributeError):
+        return False
+    if parsed.scheme not in ('http', 'https'):
+        return False
+    host = (parsed.hostname or '').lower()
+    if not host:
+        return False
+    if host in APPROVED_ARTWORK_HOSTS:
+        return True
+    return bool(api_host and host == api_host.lower())
+
+
+def make_artwork_request(url, api_url):
+    """
+        Fetches an approved artwork URL and validates each redirect.
+    """
+    for _ in range(0, 5):
+        if not is_approved_artwork_url(url, api_url):
+            log.warn('Rejected artwork URL: ' + url)
+            return None
+        try:
+            response = HTTP.Request(
+                url, timeout=90, sleep=1, follow_redirects=False
+            )
+            location = (response.headers.get('Location') or
+                        response.headers.get('location'))
+            status = getattr(response, 'status', None)
+            if status is not None:
+                try:
+                    status = int(status)
+                except (TypeError, ValueError):
+                    status = None
+        except Exception as err:
+            log.error('Failed artwork request: ' + url)
+            log.error(err)
+            return None
+        if status is not None and status >= 400:
+            log.warn('Artwork request returned %s: %s' % (status, url))
+            return None
+        if location and (status is None or 300 <= status < 400):
+            url = urljoin(url, location)
+            continue
+        return response
+    log.error('Too many artwork redirects: ' + url)
+    return None
 
 
 def make_request(url):

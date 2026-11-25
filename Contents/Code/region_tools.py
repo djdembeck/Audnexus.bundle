@@ -53,7 +53,7 @@ def get_api_url(prefs):
         api_url = prefs['api_url']
     except (KeyError, TypeError):
         api_url = None
-    return (api_url or DEFAULT_API_URL).strip().rstrip('/')
+    return (api_url or '').strip().rstrip('/') or DEFAULT_API_URL
 
 
 class RegionTool:

@@ -177,7 +177,7 @@ There are a few tricks to know about using fix match for books and authors:
 - Authors as `Mood` tag.
 - Series as `Mood` tag (prefixed by `Series:`)
 - Audnexus tags as `Mood` tags, prefixed by type where useful (`Editorial:`, `Award:`, etc.). Disable with the `store_tags_as_moods` preference.
-- Similar books from Audnexus's similar endpoint, stored in Plex's similar set when available (otherwise as `Similar:` Mood tags).
+- Similar books from Audnexus's similar endpoint, stored as `Similar:` Mood tags.
 - Sorted by Series number and then book title.
 
 **This agent cannot create collections for your series'. 
