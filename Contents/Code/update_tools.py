@@ -1,6 +1,10 @@
 # Import internal tools
 from logging import Logging
-from region_tools import RegionTool, get_api_url
+from region_tools import (
+    RegionTool,
+    get_api_url,
+    is_approved_artwork_url,
+)
 import re
 import struct
 import urllib
@@ -285,20 +289,23 @@ class AlbumUpdateTool(UpdateTool):
             if not isinstance(renditions, list):
                 renditions = []
             rendition_url = self.pick_rendition_url(renditions)
-            url = stored_url or rendition_url
-            if not url:
+            stored_ok = bool(stored_url and is_approved_artwork_url(
+                stored_url, self.api_url))
+            rendition_ok = bool(rendition_url and is_approved_artwork_url(
+                rendition_url, self.api_url))
+            if not stored_ok and not rendition_ok:
                 continue
             parsed_items += 1
+            url = stored_url if stored_ok else rendition_url
             if url in seen_urls or url == self.thumb:
                 continue
             image_id = item.get('imageId')
-            if not isinstance(image_id, (str, type(u''))):
-                image_id = None
-            if not image_id:
+            if (not isinstance(image_id, (str, type(u''))) or
+                    not image_id or url != stored_url):
                 image_id = self.get_amazon_image_id(url)
             if current_image_id and image_id == current_image_id:
                 continue
-            if stored_url and rendition_url and stored_url != rendition_url:
+            if stored_ok and rendition_ok and stored_url != rendition_url:
                 self.artwork_fallbacks[stored_url] = rendition_url
             seen_urls.add(url)
             self.artwork_urls.append(url)

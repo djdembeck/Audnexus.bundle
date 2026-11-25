@@ -4,6 +4,12 @@ import json
 # Import internal tools
 from _version import version
 from logging import Logging
+from region_tools import (
+    APPROVED_ARTWORK_HOSTS,
+    describe_url,
+    get_url_origin,
+    is_approved_artwork_url,
+)
 from search_tools import AlbumSearchTool, ArtistSearchTool, ScoreTool
 from time import sleep
 try:
@@ -16,17 +22,6 @@ VERSION_NO = version
 
 # Score required to short-circuit matching and stop searching.
 GOOD_SCORE = 98
-
-# Artwork references from Audnexus are fetched server-side. Only allow the
-# known Amazon image hosts and the explicitly configured Audnexus host.
-APPROVED_ARTWORK_HOSTS = (
-    'm.media-amazon.com',
-    'images-na.ssl-images-amazon.com',
-    'images-eu.ssl-images-amazon.com',
-    'images-ca.ssl-images-amazon.com',
-    'images-fe.ssl-images-amazon.com',
-    'images-jp.ssl-images-amazon.com',
-)
 
 # Setup logger
 log = Logging()
@@ -552,11 +547,11 @@ class AudiobookAlbum(Agent.Album):
             if url and url not in poster_urls:
                 poster_urls.append(url)
 
-        def fetch_poster(url, fallback):
+        def fetch_poster(url, fallback, skip_fallback=False):
             data = make_artwork_request(url, helper.api_url)
             if data is not None:
                 return url, data
-            if fallback:
+            if fallback and not skip_fallback:
                 data = make_artwork_request(fallback, helper.api_url)
                 if data is not None:
                     return fallback, data
@@ -571,8 +566,12 @@ class AudiobookAlbum(Agent.Album):
             elif fallback and fallback in helper.metadata.posters:
                 cached_url = fallback
             if cached_url:
-                if helper.force or index == 0:
-                    poster_url, data = fetch_poster(url, fallback)
+                retry = helper.force or index == 0 or cached_url != url
+                if retry:
+                    poster_url, data = fetch_poster(
+                        url, fallback,
+                        skip_fallback=(cached_url == fallback and
+                                        not helper.force))
                     if data is not None:
                         try:
                             helper.metadata.posters[poster_url] = Proxy.Media(
@@ -642,52 +641,6 @@ def json_decode(output):
         return json.loads(output, encoding="utf-8")
     except AttributeError:
         return None
-
-
-def get_url_origin(url):
-    """
-        Returns (scheme, host, port) for a URL, or None when invalid.
-    """
-    try:
-        parsed = urlparse(url)
-        if parsed.username or parsed.password:
-            return None
-        scheme = (parsed.scheme or '').lower()
-        host = (parsed.hostname or '').lower()
-        if scheme not in ('http', 'https') or not host:
-            return None
-        port = parsed.port
-        if port is None:
-            port = 443 if scheme == 'https' else 80
-        if not isinstance(port, int) or port <= 0 or port > 65535:
-            return None
-        return (scheme, host, port)
-    except (TypeError, ValueError, AttributeError):
-        return None
-
-
-def is_approved_artwork_url(url, api_url):
-    """
-        Returns True when an artwork URL targets an approved origin.
-    """
-    origin = get_url_origin(url)
-    if origin is None:
-        return False
-    if (origin[0] == 'https' and
-            origin[1] in APPROVED_ARTWORK_HOSTS and
-            origin[2] == 443):
-        return True
-    return origin == get_url_origin(api_url)
-
-
-def describe_url(url):
-    """
-        Returns a log-safe origin for a URL.
-    """
-    origin = get_url_origin(url)
-    if origin:
-        return '%s://%s:%s' % origin
-    return 'invalid URL'
 
 
 def make_api_request(url, api_url):

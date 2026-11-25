@@ -1,3 +1,8 @@
+try:
+    from urlparse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
+
 available_regions = {
     'au': {
         'name': 'Australia',
@@ -54,6 +59,62 @@ def get_api_url(prefs):
     except (KeyError, TypeError):
         api_url = None
     return (api_url or '').strip().rstrip('/') or DEFAULT_API_URL
+
+
+APPROVED_ARTWORK_HOSTS = (
+    'm.media-amazon.com',
+    'images-na.ssl-images-amazon.com',
+    'images-eu.ssl-images-amazon.com',
+    'images-ca.ssl-images-amazon.com',
+    'images-fe.ssl-images-amazon.com',
+    'images-jp.ssl-images-amazon.com',
+)
+
+
+def get_url_origin(url):
+    """
+        Returns (scheme, host, port) for a URL, or None when invalid.
+    """
+    try:
+        parsed = urlparse(url)
+        if parsed.username or parsed.password:
+            return None
+        scheme = (parsed.scheme or '').lower()
+        host = (parsed.hostname or '').lower()
+        if scheme not in ('http', 'https') or not host:
+            return None
+        port = parsed.port
+        if port is None:
+            port = 443 if scheme == 'https' else 80
+        if not isinstance(port, int) or port <= 0 or port > 65535:
+            return None
+        return (scheme, host, port)
+    except (TypeError, ValueError, AttributeError):
+        return None
+
+
+def is_approved_artwork_url(url, api_url):
+    """
+        Returns True when an artwork URL targets an approved origin.
+    """
+    origin = get_url_origin(url)
+    if origin is None:
+        return False
+    if (origin[0] == 'https' and
+            origin[1] in APPROVED_ARTWORK_HOSTS and
+            origin[2] == 443):
+        return True
+    return origin == get_url_origin(api_url)
+
+
+def describe_url(url):
+    """
+        Returns a log-safe origin for a URL.
+    """
+    origin = get_url_origin(url)
+    if origin:
+        return '%s://%s:%s' % origin
+    return 'invalid URL'
 
 
 class RegionTool:
