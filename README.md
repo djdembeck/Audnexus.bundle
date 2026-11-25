@@ -124,7 +124,7 @@ When enabled, **Simplify book titles** omits the separate subtitle field. It can
 
 ### Fix matches and use Quick Match
 
-In Plex Web, open the book album or author artist. Choose **… → Fix Match** (or **Match** for an unmatched item), then **Search Options**. Search by name or enter an Audible ASIN and choose the result. See [Plex's Fix Match guide](https://support.plex.tv/articles/201018497-fix-match-match/).
+In Plex Web, open the book album or author artist. Choose **… → Fix Match** (or **Match** for an unmatched item), then **Search Options**. Search by name or enter an Audible ASIN and choose the result. For books, an ASIN in the file path takes precedence over the search field. If the path contains the wrong ASIN, correct or remove it, rescan the library, and retry Fix Match. See [Plex's Fix Match guide](https://support.plex.tv/articles/201018497-fix-match-match/).
 
 An ASIN bypasses the name search. Put a region code in brackets before or after the search terms to override the default region. For example, this searches the US region for *Project Hail Mary* by its Audible ASIN:
 
