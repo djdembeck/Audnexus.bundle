@@ -16,7 +16,12 @@ try:
     from urlparse import urlparse, urljoin
 except ImportError:
     from urllib.parse import urlparse, urljoin
-from update_tools import AlbumUpdateTool, ArtistUpdateTool
+from update_tools import (
+    AlbumUpdateTool,
+    ArtistUpdateTool,
+    MAX_HISTORY_POSTERS,
+    store_similar_enabled,
+)
 
 VERSION_NO = version
 
@@ -225,9 +230,9 @@ class AudiobookArtist(Agent.Artist):
             return False
         try:
             response = json_decode(str(request))
-        except Exception as err:
-            log.error('Invalid Audnexus response (%s): %s' % (
-                describe_url(update_url), err))
+        except Exception:
+            log.error('Invalid Audnexus response (%s)' % (
+                describe_url(update_url)))
             return False
         if (not isinstance(response, dict) or
                 'error' in response or 'asin' not in response):
@@ -468,9 +473,9 @@ class AudiobookAlbum(Agent.Album):
             return False
         try:
             response = json_decode(str(request))
-        except Exception as err:
-            log.error('Invalid Audnexus response (%s): %s' % (
-                describe_url(update_url), err))
+        except Exception:
+            log.error('Invalid Audnexus response (%s)' % (
+                describe_url(update_url)))
             return False
         if (not isinstance(response, dict) or
                 'error' in response or 'asin' not in response):
@@ -478,7 +483,8 @@ class AudiobookAlbum(Agent.Album):
             return False
         helper.parse_api_response(response)
         self.fetch_artwork(helper)
-        self.fetch_similar(helper)
+        if store_similar_enabled(helper.prefs):
+            self.fetch_similar(helper)
 
         # Set date to date object
         helper.date = self.getDateFromString(helper.date)
@@ -499,12 +505,12 @@ class AudiobookAlbum(Agent.Album):
                 helper.artwork_fallbacks = {}
                 return
             helper.parse_artwork_response(json_decode(str(response)))
-        except Exception as err:
+        except Exception:
             helper.artwork_ok = False
             helper.artwork_urls = []
             helper.artwork_fallbacks = {}
-            log.error('Failed to fetch artwork history (%s): %s' % (
-                describe_url(artwork_url), err))
+            log.error('Failed to fetch artwork history (%s)' % (
+                describe_url(artwork_url)))
 
     def fetch_similar(self, helper):
         """
@@ -518,9 +524,9 @@ class AudiobookAlbum(Agent.Album):
             if response is None:
                 return
             helper.parse_similar_response(json_decode(str(response)))
-        except Exception as err:
-            log.error('Failed to fetch similar books (%s): %s' % (
-                describe_url(similar_url), err))
+        except Exception:
+            log.error('Failed to fetch similar books (%s)' % (
+                describe_url(similar_url)))
 
     def compile_metadata(self, helper):
         """
@@ -544,6 +550,7 @@ class AudiobookAlbum(Agent.Album):
         history_urls = [url for url in helper.artwork_urls if url]
         if helper.poster_order == 'Oldest historical cover':
             history_urls.reverse()
+            history_urls = history_urls[:MAX_HISTORY_POSTERS]
             poster_urls.extend(history_urls)
             if helper.thumb:
                 poster_urls.append(helper.thumb)
@@ -552,13 +559,18 @@ class AudiobookAlbum(Agent.Album):
                 key=lambda url: helper.artwork_sizes.get(url, 0),
                 reverse=True
             )
+            history_urls = history_urls[:MAX_HISTORY_POSTERS]
+            ranked = []
+            for url in history_urls:
+                ranked.append((helper.artwork_sizes.get(url, 0), url))
             if helper.thumb:
-                poster_urls.append(helper.thumb)
-            poster_urls.extend(history_urls)
+                ranked.append((helper.current_artwork_size, helper.thumb))
+            ranked.sort(key=lambda item: item[0], reverse=True)
+            poster_urls = [url for size, url in ranked]
         else:
             if helper.thumb:
                 poster_urls.append(helper.thumb)
-            poster_urls.extend(history_urls)
+            poster_urls.extend(history_urls[:MAX_HISTORY_POSTERS])
         unique_urls = []
         for url in poster_urls:
             if url and url not in unique_urls:
@@ -596,13 +608,17 @@ class AudiobookAlbum(Agent.Album):
                                 data, sort_order=index
                             )
                             available_urls.append(poster_url)
-                        except Exception as err:
-                            log.error('Failed to refresh poster (%s): %s' % (
-                                describe_url(poster_url), err))
+                        except Exception:
+                            log.error('Failed to refresh poster (%s)' % (
+                                describe_url(poster_url)))
                             available_urls.append(cached_url)
                     else:
                         available_urls.append(cached_url)
                 else:
+                    try:
+                        helper.metadata.posters[cached_url].sort_order = index
+                    except Exception:
+                        pass
                     available_urls.append(cached_url)
                 continue
             poster_url, data = fetch_poster(url, fallback)
@@ -613,9 +629,9 @@ class AudiobookAlbum(Agent.Album):
                     data, sort_order=index
                 )
                 available_urls.append(poster_url)
-            except Exception as err:
-                log.error('Failed to fetch poster (%s): %s' % (
-                    describe_url(poster_url), err))
+            except Exception:
+                log.error('Failed to fetch poster (%s)' % (
+                    describe_url(poster_url)))
 
         if available_urls:
             if helper.artwork_ok:
@@ -687,9 +703,8 @@ def make_api_request(url, api_url):
             )
             location = (get_header(response.headers, 'Location') or
                         get_header(response.headers, 'location'))
-        except Exception as err:
-            log.error('API request failed (%s): %s' % (
-                describe_url(url), err))
+        except Exception:
+            log.error('API request failed (%s)' % describe_url(url))
             return None
         if location:
             url = urljoin(url, location)
@@ -724,9 +739,8 @@ def make_artwork_request(url, api_url):
                     status = int(status)
                 except (TypeError, ValueError):
                     status = None
-        except Exception as err:
-            log.error('Artwork request failed (%s): %s' % (
-                describe_url(url), err))
+        except Exception:
+            log.error('Artwork request failed (%s)' % describe_url(url))
             return None
         if location and (status is None or 300 <= status < 400):
             url = urljoin(url, location)

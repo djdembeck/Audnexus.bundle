@@ -18,6 +18,16 @@ try:
 except NameError:
     STRING_TYPES = (str,)
 
+
+def store_similar_enabled(prefs):
+    """
+        Returns whether similar-book moods are enabled.
+    """
+    try:
+        return prefs['store_similar_as_moods']
+    except (KeyError, TypeError):
+        return False
+
 # Keep the poster picker useful instead of mirroring the entire history.
 MAX_HISTORY_POSTERS = 10
 MAX_SIMILAR_BOOKS = 10
@@ -45,6 +55,17 @@ class UpdateTool:
             self.poster_order = self.prefs['poster_order']
         except KeyError:
             pass
+        poster_aliases = {
+            'Most recent first': 'Most recent cover',
+            'Most recent cover first': 'Most recent cover',
+            'Oldest first': 'Oldest historical cover',
+            'Oldest cover first': 'Oldest historical cover',
+            'Largest first': 'Largest resolution cover',
+            'Largest resolution first': 'Largest resolution cover',
+        }
+        self.poster_order = poster_aliases.get(
+            self.poster_order, self.poster_order)
+        self.current_artwork_size = 0
 
     def build_url(self):
         """
@@ -284,6 +305,7 @@ class AlbumUpdateTool(UpdateTool):
         self.artwork_urls = []
         self.artwork_fallbacks = {}
         self.artwork_sizes = {}
+        self.current_artwork_size = 0
         if not isinstance(response, dict):
             return
         items = response.get('items')
@@ -293,6 +315,7 @@ class AlbumUpdateTool(UpdateTool):
 
         current_image_id = self.get_amazon_image_id(self.thumb)
         seen_urls = set()
+        seen_image_ids = set()
         parsed_items = 0
         for item in items:
             if not isinstance(item, dict):
@@ -366,6 +389,21 @@ class AlbumUpdateTool(UpdateTool):
             if (current_image_id and
                     item_image_id == current_image_id and
                     url_image_id == current_image_id):
+                current_size = 0
+                for rendition in renditions:
+                    if not isinstance(rendition, dict):
+                        continue
+                    try:
+                        candidate_size = int(
+                            rendition.get('rendition'))
+                    except (TypeError, ValueError):
+                        continue
+                    if candidate_size > current_size:
+                        current_size = candidate_size
+                if current_size > self.current_artwork_size:
+                    self.current_artwork_size = current_size
+                continue
+            if item_image_id and item_image_id in seen_image_ids:
                 continue
             if (stored_ok and fallback_url and
                     fallback_url != stored_url):
@@ -380,21 +418,13 @@ class AlbumUpdateTool(UpdateTool):
                     except (TypeError, ValueError):
                         artwork_size = 0
                     break
-            if not artwork_size and stored_ok:
-                for rendition in renditions:
-                    if not isinstance(rendition, dict):
-                        continue
-                    try:
-                        candidate_size = int(
-                            rendition.get('rendition'))
-                    except (TypeError, ValueError):
-                        continue
-                    if candidate_size > artwork_size:
-                        artwork_size = candidate_size
+            if item_image_id:
+                seen_image_ids.add(item_image_id)
             seen_urls.add(url)
             self.artwork_sizes[url] = artwork_size
             self.artwork_urls.append(url)
-            if len(self.artwork_urls) >= MAX_HISTORY_POSTERS:
+            if (self.poster_order == 'Most recent cover' and
+                    len(self.artwork_urls) >= MAX_HISTORY_POSTERS):
                 break
         if items and not parsed_items:
             self.artwork_ok = False
@@ -543,10 +573,7 @@ class AlbumUpdateTool(UpdateTool):
         tagger = TagTool(self, self.prefs)
 
         # Clears moods if force (refresh) is true.
-        try:
-            store_similar = self.prefs['store_similar_as_moods']
-        except KeyError:
-            store_similar = False
+        store_similar = store_similar_enabled(self.prefs)
         if self.force:
             tagger.clear_moods(
                 keep_similar=(store_similar and
@@ -677,14 +704,14 @@ class ArtistUpdateTool(UpdateTool):
 
             return image_url
 
-        except Exception as err:
+        except Exception:
             log.separator(
                 msg=(
                     'Error getting square image for ' + self.media.title
                 ),
                 log_level="error"
             )
-            log.error(err)
+            log.error('Failed to get square image')
         return image_url
 
     def parse_api_response(self, response):
