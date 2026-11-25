@@ -288,15 +288,37 @@ class AlbumUpdateTool(UpdateTool):
             renditions = item.get('renditions')
             if not isinstance(renditions, list):
                 renditions = []
-            rendition_url = self.pick_rendition_url(renditions)
+            rendition_urls = self.pick_rendition_urls(renditions)
             stored_ok = bool(stored_url and is_approved_artwork_url(
                 stored_url, self.api_url))
-            rendition_ok = bool(rendition_url and is_approved_artwork_url(
-                rendition_url, self.api_url))
-            if not stored_ok and not rendition_ok:
+            if not stored_ok and not rendition_urls:
                 continue
             parsed_items += 1
-            url = stored_url if stored_ok else rendition_url
+            fallback_url = None
+            if stored_ok:
+                url = stored_url
+                for candidate in rendition_urls:
+                    if candidate == self.thumb:
+                        continue
+                    if (current_image_id and
+                            self.get_amazon_image_id(candidate) ==
+                            current_image_id):
+                        continue
+                    fallback_url = candidate
+                    break
+            else:
+                url = None
+                for candidate in rendition_urls:
+                    if candidate == self.thumb:
+                        continue
+                    if (current_image_id and
+                            self.get_amazon_image_id(candidate) ==
+                            current_image_id):
+                        continue
+                    url = candidate
+                    break
+                if not url:
+                    continue
             if url in seen_urls or url == self.thumb:
                 continue
             item_image_id = item.get('imageId')
@@ -308,13 +330,9 @@ class AlbumUpdateTool(UpdateTool):
                     item_image_id == current_image_id and
                     url_image_id == current_image_id):
                 continue
-            rendition_is_current = (
-                rendition_url == self.thumb or
-                (current_image_id and
-                 self.get_amazon_image_id(rendition_url) == current_image_id))
-            if (stored_ok and rendition_ok and stored_url != rendition_url and
-                    not rendition_is_current):
-                self.artwork_fallbacks[stored_url] = rendition_url
+            if (stored_ok and fallback_url and
+                    fallback_url != stored_url):
+                self.artwork_fallbacks[stored_url] = fallback_url
             seen_urls.add(url)
             self.artwork_urls.append(url)
             if len(self.artwork_urls) >= MAX_HISTORY_POSTERS:
@@ -324,10 +342,11 @@ class AlbumUpdateTool(UpdateTool):
             self.artwork_urls = []
             self.artwork_fallbacks = {}
 
-    def pick_rendition_url(self, renditions):
+    def pick_rendition_urls(self, renditions):
         """
-            Returns the best usable rendition URL for one artwork item.
+            Returns approved rendition URLs in preference order.
         """
+        approved = []
         for preferred in ('1024', '500'):
             for rendition in renditions:
                 if not isinstance(rendition, dict):
@@ -335,16 +354,18 @@ class AlbumUpdateTool(UpdateTool):
                 source = rendition.get('sourceUrl')
                 if (rendition.get('rendition') == preferred and
                         isinstance(source, (str, type(u''))) and source and
-                        is_approved_artwork_url(source, self.api_url)):
-                    return source
+                        is_approved_artwork_url(source, self.api_url) and
+                        source not in approved):
+                    approved.append(source)
         for rendition in renditions:
             if not isinstance(rendition, dict):
                 continue
             source = rendition.get('sourceUrl')
             if (isinstance(source, (str, type(u''))) and source and
-                    is_approved_artwork_url(source, self.api_url)):
-                return source
-        return None
+                    is_approved_artwork_url(source, self.api_url) and
+                    source not in approved):
+                approved.append(source)
+        return approved
 
     def parse_similar_response(self, response):
         """
