@@ -261,6 +261,7 @@ class AlbumUpdateTool(UpdateTool):
         """
         self.artwork_ok = False
         self.artwork_urls = []
+        self.artwork_fallbacks = {}
         if not isinstance(response, dict):
             return
         items = response.get('items')
@@ -268,52 +269,57 @@ class AlbumUpdateTool(UpdateTool):
             return
         self.artwork_ok = True
 
-        # The API reports each rendition as a separate asset. Prefer the
-        # highest-quality rendition within an item, but keep distinct
-        # 500px-only history entries. Rendition IDs can differ even when
-        # the artwork is related, so a book-wide 1024 filter would drop
-        # real history.
         current_image_id = self.get_amazon_image_id(self.thumb)
         seen_urls = set()
         for item in items:
-            legacy = item.get('legacy') or {}
-            url = legacy.get('storedUrl')
-            image_id = item.get('imageId')
-
-            if not url:
-                renditions = item.get('renditions') or []
-                preferred = None
-                for rendition in renditions:
-                    if (rendition.get('rendition') == '1024' and
-                            rendition.get('sourceUrl')):
-                        preferred = rendition
-                        break
-                if not preferred:
-                    for rendition in renditions:
-                        if (rendition.get('rendition') == '500' and
-                                rendition.get('sourceUrl')):
-                            preferred = rendition
-                            break
-                if not preferred:
-                    for rendition in renditions:
-                        if rendition.get('sourceUrl'):
-                            preferred = rendition
-                            break
-                if preferred:
-                    url = preferred.get('sourceUrl')
-
+            if not isinstance(item, dict):
+                continue
+            legacy = item.get('legacy')
+            if not isinstance(legacy, dict):
+                legacy = {}
+            stored_url = legacy.get('storedUrl')
+            if not isinstance(stored_url, (str, type(u''))):
+                stored_url = None
+            renditions = item.get('renditions')
+            if not isinstance(renditions, list):
+                renditions = []
+            rendition_url = self.pick_rendition_url(renditions)
+            url = stored_url or rendition_url
             if not url or url in seen_urls or url == self.thumb:
                 continue
-
+            image_id = item.get('imageId')
+            if not isinstance(image_id, (str, type(u''))):
+                image_id = None
             if not image_id:
                 image_id = self.get_amazon_image_id(url)
             if current_image_id and image_id == current_image_id:
                 continue
-
+            if stored_url and rendition_url and stored_url != rendition_url:
+                self.artwork_fallbacks[stored_url] = rendition_url
             seen_urls.add(url)
             self.artwork_urls.append(url)
             if len(self.artwork_urls) >= MAX_HISTORY_POSTERS:
                 break
+
+    def pick_rendition_url(self, renditions):
+        """
+            Returns the best usable rendition URL for one artwork item.
+        """
+        for preferred in ('1024', '500'):
+            for rendition in renditions:
+                if not isinstance(rendition, dict):
+                    continue
+                source = rendition.get('sourceUrl')
+                if (rendition.get('rendition') == preferred and
+                        isinstance(source, (str, type(u''))) and source):
+                    return source
+        for rendition in renditions:
+            if not isinstance(rendition, dict):
+                continue
+            source = rendition.get('sourceUrl')
+            if isinstance(source, (str, type(u''))) and source:
+                return source
+        return None
 
     def parse_similar_response(self, response):
         """
@@ -364,6 +370,7 @@ class AlbumUpdateTool(UpdateTool):
         """
             Sets empty variables.
         """
+        self.artwork_fallbacks = {}
         self.artwork_ok = False
         self.artwork_urls = []
         self.date = None
@@ -429,7 +436,8 @@ class AlbumUpdateTool(UpdateTool):
 
         # Clears moods if force (refresh) is true.
         if self.force:
-            tagger.clear_moods()
+            tagger.clear_moods(
+                keep_similar=not getattr(self, 'similar_ok', False))
             tagger.clear_styles()
 
         # Genres.
@@ -726,13 +734,15 @@ class TagTool:
             Adds similar books as agent-owned Similar: moods.
         """
         if replace:
+            keep = []
             for mood in list(self.helper.metadata.moods):
                 if (isinstance(mood, (str, type(u''))) and
                         mood.startswith('Similar: ')):
-                    try:
-                        self.helper.metadata.moods.remove(mood)
-                    except Exception:
-                        pass
+                    continue
+                keep.append(mood)
+            self.helper.metadata.moods.clear()
+            for mood in keep:
+                self.helper.metadata.moods.add(mood)
         if not self.helper.similar:
             return
         for item in self.helper.similar:
@@ -771,11 +781,21 @@ class TagTool:
             for name in names:
                 self.helper.metadata.moods.add('Similar: ' + name)
 
-    def clear_moods(self):
+    def clear_moods(self, keep_similar=False):
         """
-            Clears moods.
+            Clears moods, optionally keeping agent-owned Similar: moods.
         """
+        if not keep_similar:
+            self.helper.metadata.moods.clear()
+            return
+        similar = []
+        for mood in list(self.helper.metadata.moods):
+            if (isinstance(mood, (str, type(u''))) and
+                    mood.startswith('Similar: ')):
+                similar.append(mood)
         self.helper.metadata.moods.clear()
+        for mood in similar:
+            self.helper.metadata.moods.add(mood)
 
     def clear_styles(self):
         """

@@ -4,7 +4,6 @@ import json
 # Import internal tools
 from _version import version
 from logging import Logging
-from region_tools import DEFAULT_API_URL
 from search_tools import AlbumSearchTool, ArtistSearchTool, ScoreTool
 from time import sleep
 try:
@@ -179,8 +178,10 @@ class AudiobookArtist(Agent.Artist):
         """
         query = helper.build_search_args()
         search_url = helper.build_url(query)
-        request = str(make_request(search_url))
-        response = json_decode(request)
+        request = make_api_request(search_url, helper.api_url)
+        if request is None:
+            return []
+        response = json_decode(str(request))
         # When using asin match, put it into array
         if isinstance(response, list):
             arr_to_pass = response
@@ -221,8 +222,20 @@ class AudiobookArtist(Agent.Artist):
             then calls helper to parse those details.
         """
         update_url = helper.build_url()
-        request = str(make_request(update_url))
-        response = json_decode(request)
+        request = make_api_request(update_url, helper.api_url)
+        if request is None:
+            log.error('No response from Audnexus (%s)' % describe_url(update_url))
+            return
+        try:
+            response = json_decode(str(request))
+        except Exception as err:
+            log.error('Invalid Audnexus response (%s): %s' % (
+                describe_url(update_url), type(err).__name__))
+            return
+        if (not isinstance(response, dict) or
+                'error' in response or 'asin' not in response):
+            log.error('Invalid Audnexus response (%s)' % describe_url(update_url))
+            return
         helper.parse_api_response(response)
 
     def compile_metadata(self, helper):
@@ -449,15 +462,23 @@ class AudiobookAlbum(Agent.Album):
             then calls helper to parse those details.
         """
         update_url = helper.build_url()
-        request = str(make_request(update_url))
-        response = json_decode(request)
+        request = make_api_request(update_url, helper.api_url)
+        if request is None:
+            log.error('No response from Audnexus (%s)' % describe_url(update_url))
+            return
+        try:
+            response = json_decode(str(request))
+        except Exception as err:
+            log.error('Invalid Audnexus response (%s): %s' % (
+                describe_url(update_url), type(err).__name__))
+            return
+        if (not isinstance(response, dict) or
+                'error' in response or 'asin' not in response):
+            log.error('Invalid Audnexus response (%s)' % describe_url(update_url))
+            return
         helper.parse_api_response(response)
-        # The new endpoint family arrived with the tags field on /books.
-        # Skip the extra requests on deployments that still return the old
-        # payload, unless the user points the agent at a custom API.
-        if 'tags' in response or helper.api_url != DEFAULT_API_URL:
-            self.fetch_artwork(helper)
-            self.fetch_similar(helper)
+        self.fetch_artwork(helper)
+        self.fetch_similar(helper)
 
         # Set date to date object
         helper.date = self.getDateFromString(helper.date)
@@ -470,13 +491,19 @@ class AudiobookAlbum(Agent.Album):
         if not artwork_url:
             return
         try:
-            response = json_decode(str(make_request(artwork_url)))
-            helper.parse_artwork_response(response)
+            response = make_api_request(artwork_url, helper.api_url)
+            if response is None:
+                helper.artwork_ok = False
+                helper.artwork_urls = []
+                helper.artwork_fallbacks = {}
+                return
+            helper.parse_artwork_response(json_decode(str(response)))
         except Exception as err:
             helper.artwork_ok = False
             helper.artwork_urls = []
-            log.error('Failed to fetch artwork history: ' + artwork_url)
-            log.error(err)
+            helper.artwork_fallbacks = {}
+            log.error('Failed to fetch artwork history (%s): %s' % (
+                describe_url(artwork_url), type(err).__name__))
 
     def fetch_similar(self, helper):
         """
@@ -486,11 +513,13 @@ class AudiobookAlbum(Agent.Album):
         if not similar_url:
             return
         try:
-            response = json_decode(str(make_request(similar_url)))
-            helper.parse_similar_response(response)
+            response = make_api_request(similar_url, helper.api_url)
+            if response is None:
+                return
+            helper.parse_similar_response(json_decode(str(response)))
         except Exception as err:
-            log.error('Failed to fetch similar books: ' + similar_url)
-            log.error(err)
+            log.error('Failed to fetch similar books (%s): %s' % (
+                describe_url(similar_url), type(err).__name__))
 
     def compile_metadata(self, helper):
         """
@@ -517,33 +546,48 @@ class AudiobookAlbum(Agent.Album):
             if url and url not in poster_urls:
                 poster_urls.append(url)
 
+        def fetch_poster(url):
+            data = make_artwork_request(url, helper.api_url)
+            if data is not None:
+                return url, data
+            fallback = getattr(helper, 'artwork_fallbacks', {}).get(url)
+            if fallback:
+                data = make_artwork_request(fallback, helper.api_url)
+                if data is not None:
+                    return fallback, data
+            return None, None
+
         available_urls = []
         for index, url in enumerate(poster_urls):
             if url in helper.metadata.posters:
-                available_urls.append(url)
                 if helper.force or index == 0:
-                    # Refresh forced posters and keep the current cover first.
-                    data = make_artwork_request(url, helper.api_url)
+                    poster_url, data = fetch_poster(url)
                     if data is not None:
                         try:
-                            helper.metadata.posters[url] = Proxy.Media(
+                            helper.metadata.posters[poster_url] = Proxy.Media(
                                 data, sort_order=index
                             )
+                            available_urls.append(poster_url)
                         except Exception as err:
-                            log.error('Failed to refresh poster: ' + url)
-                            log.error(err)
+                            log.error('Failed to refresh poster (%s): %s' % (
+                                describe_url(poster_url), type(err).__name__))
+                            available_urls.append(url)
+                    else:
+                        available_urls.append(url)
+                else:
+                    available_urls.append(url)
                 continue
-            data = make_artwork_request(url, helper.api_url)
+            poster_url, data = fetch_poster(url)
             if data is None:
                 continue
             try:
-                helper.metadata.posters[url] = Proxy.Media(
+                helper.metadata.posters[poster_url] = Proxy.Media(
                     data, sort_order=index
                 )
-                available_urls.append(url)
+                available_urls.append(poster_url)
             except Exception as err:
-                log.error('Failed to fetch poster: ' + url)
-                log.error(err)
+                log.error('Failed to fetch poster (%s): %s' % (
+                    describe_url(poster_url), type(err).__name__))
 
         if available_urls:
             if getattr(helper, 'artwork_ok', False):
@@ -625,13 +669,25 @@ def is_approved_artwork_url(url, api_url):
     return origin == get_url_origin(api_url)
 
 
-def make_artwork_request(url, api_url):
+def describe_url(url):
     """
-        Fetches an approved artwork URL and validates each redirect.
+        Returns a log-safe origin for a URL.
     """
+    origin = get_url_origin(url)
+    if origin:
+        return '%s://%s:%s' % origin
+    return 'invalid URL'
+
+
+def make_api_request(url, api_url):
+    """
+        Fetches an Audnexus API URL, following redirects only within the
+        configured API origin.
+    """
+    api_origin = get_url_origin(api_url)
     for _ in range(0, 5):
-        if not is_approved_artwork_url(url, api_url):
-            log.warn('Rejected artwork URL: ' + url)
+        if api_origin is None or get_url_origin(url) != api_origin:
+            log.warn('Rejected API URL (%s)' % describe_url(url))
             return None
         try:
             response = HTTP.Request(
@@ -639,6 +695,34 @@ def make_artwork_request(url, api_url):
             )
             location = (response.headers.get('Location') or
                         response.headers.get('location'))
+        except Exception as err:
+            log.error('API request failed (%s): %s' % (
+                describe_url(url), type(err).__name__))
+            return None
+        if location:
+            url = urljoin(url, location)
+            continue
+        return response
+    log.error('Too many API redirects (%s)' % describe_url(url))
+    return None
+
+
+def make_artwork_request(url, api_url):
+    """
+        Fetches an approved artwork URL and validates each redirect.
+    """
+    for _ in range(0, 5):
+        if not is_approved_artwork_url(url, api_url):
+            log.warn('Rejected artwork URL (%s)' % describe_url(url))
+            return None
+        try:
+            response = HTTP.Request(
+                url, timeout=90, sleep=1, follow_redirects=False
+            )
+            location = (response.headers.get('Location') or
+                        response.headers.get('location'))
+            content_type = (response.headers.get('Content-Type') or
+                            response.headers.get('content-type') or '')
             status = getattr(response, 'status', None)
             if status is not None:
                 try:
@@ -646,17 +730,21 @@ def make_artwork_request(url, api_url):
                 except (TypeError, ValueError):
                     status = None
         except Exception as err:
-            log.error('Failed artwork request: ' + url)
-            log.error(err)
-            return None
-        if status is not None and status >= 400:
-            log.warn('Artwork request returned %s: %s' % (status, url))
+            log.error('Artwork request failed (%s): %s' % (
+                describe_url(url), type(err).__name__))
             return None
         if location and (status is None or 300 <= status < 400):
             url = urljoin(url, location)
             continue
+        if status is not None and status >= 400:
+            log.warn('Artwork request returned %s (%s)' % (
+                status, describe_url(url)))
+            return None
+        if content_type and not content_type.lower().startswith('image/'):
+            log.warn('Artwork response is not an image (%s)' % describe_url(url))
+            return None
         return response
-    log.error('Too many artwork redirects: ' + url)
+    log.error('Too many artwork redirects (%s)' % describe_url(url))
     return None
 
 
