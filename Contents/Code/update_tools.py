@@ -308,7 +308,12 @@ class AlbumUpdateTool(UpdateTool):
                     item_image_id == current_image_id and
                     url_image_id == current_image_id):
                 continue
-            if stored_ok and rendition_ok and stored_url != rendition_url:
+            rendition_is_current = (
+                rendition_url == self.thumb or
+                (current_image_id and
+                 self.get_amazon_image_id(rendition_url) == current_image_id))
+            if (stored_ok and rendition_ok and stored_url != rendition_url and
+                    not rendition_is_current):
                 self.artwork_fallbacks[stored_url] = rendition_url
             seen_urls.add(url)
             self.artwork_urls.append(url)
