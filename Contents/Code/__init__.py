@@ -521,13 +521,13 @@ class AudiobookAlbum(Agent.Album):
         for index, url in enumerate(poster_urls):
             if url in helper.metadata.posters:
                 available_urls.append(url)
-                if index == 0 and not helper.force:
-                    # Re-add the current cover so its sort order is current.
+                if helper.force or index == 0:
+                    # Refresh forced posters and keep the current cover first.
                     data = make_artwork_request(url, helper.api_url)
                     if data is not None:
                         try:
                             helper.metadata.posters[url] = Proxy.Media(
-                                data, sort_order=0
+                                data, sort_order=index
                             )
                         except Exception as err:
                             log.error('Failed to refresh poster: ' + url)
@@ -589,23 +589,40 @@ def json_decode(output):
         return None
 
 
+def get_url_origin(url):
+    """
+        Returns (scheme, host, port) for a URL, or None when invalid.
+    """
+    try:
+        parsed = urlparse(url)
+        if parsed.username or parsed.password:
+            return None
+        scheme = (parsed.scheme or '').lower()
+        host = (parsed.hostname or '').lower()
+        if scheme not in ('http', 'https') or not host:
+            return None
+        port = parsed.port
+        if port is None:
+            port = 443 if scheme == 'https' else 80
+        if not isinstance(port, int) or port <= 0 or port > 65535:
+            return None
+        return (scheme, host, port)
+    except (TypeError, ValueError, AttributeError):
+        return None
+
+
 def is_approved_artwork_url(url, api_url):
     """
         Returns True when an artwork URL targets an approved origin.
     """
-    try:
-        parsed = urlparse(url)
-        api_host = urlparse(api_url).hostname
-    except (TypeError, ValueError, AttributeError):
+    origin = get_url_origin(url)
+    if origin is None:
         return False
-    if parsed.scheme not in ('http', 'https'):
-        return False
-    host = (parsed.hostname or '').lower()
-    if not host:
-        return False
-    if host in APPROVED_ARTWORK_HOSTS:
+    if (origin[0] == 'https' and
+            origin[1] in APPROVED_ARTWORK_HOSTS and
+            origin[2] == 443):
         return True
-    return bool(api_host and host == api_host.lower())
+    return origin == get_url_origin(api_url)
 
 
 def make_artwork_request(url, api_url):

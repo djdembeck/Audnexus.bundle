@@ -337,6 +337,10 @@ class AlbumUpdateTool(UpdateTool):
             title = title.strip()
             if title:
                 similar.append({'name': title})
+        if books and not similar:
+            # A nonempty list with no usable titles is malformed; keep the
+            # inline fallback instead of replacing it with an empty list.
+            return
         self.similar = similar
         self.similar_ok = True
 
