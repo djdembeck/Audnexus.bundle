@@ -317,12 +317,19 @@ class AlbumUpdateTool(UpdateTool):
                         continue
                     if (current_image_id and
                             self.get_amazon_image_id(candidate) ==
-                            current_image_id and
-                            (not explicit_image_id or
-                             explicit_image_id == current_image_id)):
+                            current_image_id):
                         continue
                     url = candidate
                     break
+                if not url and explicit_image_id and current_image_id:
+                    for candidate in rendition_urls:
+                        if candidate == self.thumb:
+                            continue
+                        if (self.get_amazon_image_id(candidate) ==
+                                current_image_id and
+                                explicit_image_id != current_image_id):
+                            url = candidate
+                            break
                 if not url:
                     continue
             if url in seen_urls or url == self.thumb:
