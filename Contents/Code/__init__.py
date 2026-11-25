@@ -587,6 +587,12 @@ class AudiobookAlbum(Agent.Album):
                     return fallback, data
             return None, None
 
+        def set_cached_order(url, order):
+            try:
+                helper.metadata.posters[url].sort_order = order
+            except Exception:
+                pass
+
         available_urls = []
         for index, url in enumerate(poster_urls):
             fallback = helper.artwork_fallbacks.get(url)
@@ -611,14 +617,13 @@ class AudiobookAlbum(Agent.Album):
                         except Exception:
                             log.error('Failed to refresh poster (%s)' % (
                                 describe_url(poster_url)))
+                            set_cached_order(cached_url, index)
                             available_urls.append(cached_url)
                     else:
+                        set_cached_order(cached_url, index)
                         available_urls.append(cached_url)
                 else:
-                    try:
-                        helper.metadata.posters[cached_url].sort_order = index
-                    except Exception:
-                        pass
+                    set_cached_order(cached_url, index)
                     available_urls.append(cached_url)
                 continue
             poster_url, data = fetch_poster(url, fallback)
