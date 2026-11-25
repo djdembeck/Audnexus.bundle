@@ -38,10 +38,14 @@
     },
     {
         "id": "poster_order",
-        "label": "Poster order: ",
+        "label": "Which cover Plex shows first: ",
         "type": "enum",
-        "values": ["Most recent first", "Oldest first", "Largest first"],
-        "default": "Most recent first"
+        "values": [
+            "Most recent cover first",
+            "Oldest cover first",
+            "Largest resolution first"
+        ],
+        "default": "Most recent cover first"
     },
     {
         "id": "sort_author_by_last_name",

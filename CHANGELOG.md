@@ -12,7 +12,7 @@ All notable changes to this project will be documented in this file. See [standa
 * **prefs:** allow selecting a self-hosted or newer Audnexus API base URL
 * **prefs:** allow disabling similar-book Mood tags
 * **prefs:** disable Audnexus tag moods by default
-* **prefs:** choose most recent, oldest, or largest poster first
+* **prefs:** choose most recent, oldest, or largest-resolution cover first
 
 ### [1.3.2](https://github.com/djdembeck/Audnexus.bundle/compare/v1.3.1...v1.3.2) (2024-08-12)
 

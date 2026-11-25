@@ -542,12 +542,12 @@ class AudiobookAlbum(Agent.Album):
         # Kept here because of Proxy
         poster_urls = []
         history_urls = [url for url in helper.artwork_urls if url]
-        if helper.poster_order == 'Oldest first':
+        if helper.poster_order == 'Oldest cover first':
             history_urls.reverse()
             poster_urls.extend(history_urls)
             if helper.thumb:
                 poster_urls.append(helper.thumb)
-        elif helper.poster_order == 'Largest first':
+        elif helper.poster_order == 'Largest resolution first':
             history_urls.sort(
                 key=lambda url: helper.artwork_sizes.get(url, 0),
                 reverse=True
