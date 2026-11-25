@@ -165,7 +165,7 @@ There are a few tricks to know about using fix match for books and authors:
 
 #### Books (Albums)
 - High resolution cover (up to 3200x3200).
-- Poster used after matching: most recent, oldest historical, or largest-resolution cover.
+- Default poster: most recent, oldest historical, or largest-resolution cover.
 - Retained historical covers, when Audnexus has them, as additional choices in Plex's artwork picker.
 - Rating (currently based on Audible user rating).
 - Release date.
