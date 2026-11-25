@@ -299,10 +299,14 @@ class AlbumUpdateTool(UpdateTool):
             url = stored_url if stored_ok else rendition_url
             if url in seen_urls or url == self.thumb:
                 continue
-            image_id = item.get('imageId')
-            if not isinstance(image_id, (str, type(u''))) or not image_id:
-                image_id = self.get_amazon_image_id(url)
-            if current_image_id and image_id == current_image_id:
+            item_image_id = item.get('imageId')
+            if (not isinstance(item_image_id, (str, type(u''))) or
+                    not item_image_id):
+                item_image_id = self.get_amazon_image_id(url)
+            url_image_id = self.get_amazon_image_id(url)
+            if (current_image_id and
+                    item_image_id == current_image_id and
+                    url_image_id == current_image_id):
                 continue
             if stored_ok and rendition_ok and stored_url != rendition_url:
                 self.artwork_fallbacks[stored_url] = rendition_url
