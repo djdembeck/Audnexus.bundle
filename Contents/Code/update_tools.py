@@ -481,9 +481,14 @@ class AlbumUpdateTool(UpdateTool):
         tagger = TagTool(self, self.prefs)
 
         # Clears moods if force (refresh) is true.
+        try:
+            store_similar = self.prefs['store_similar_as_moods']
+        except KeyError:
+            store_similar = True
         if self.force:
             tagger.clear_moods(
-                keep_similar=not getattr(self, 'similar_ok', False))
+                keep_similar=(store_similar and
+                              not getattr(self, 'similar_ok', False)))
             tagger.clear_styles()
 
         # Genres.
@@ -499,7 +504,11 @@ class AlbumUpdateTool(UpdateTool):
         if self.prefs['store_tags_as_moods']:
             tagger.add_tags_to_moods()
         # Similar books. Replace only when the dedicated response was valid.
-        tagger.add_similar_moods(replace=getattr(self, 'similar_ok', False))
+        if store_similar:
+            tagger.add_similar_moods(
+                replace=getattr(self, 'similar_ok', False))
+        else:
+            tagger.clear_similar_moods()
 
     def set_metadata_title(self):
         """
@@ -801,6 +810,20 @@ class TagTool:
             name = name.strip()
             if name:
                 self.helper.metadata.moods.add('Similar: ' + name)
+
+    def clear_similar_moods(self):
+        """
+            Removes agent-owned Similar: moods.
+        """
+        keep = []
+        for mood in list(self.helper.metadata.moods):
+            if (isinstance(mood, (str, type(u''))) and
+                    mood.startswith('Similar: ')):
+                continue
+            keep.append(mood)
+        self.helper.metadata.moods.clear()
+        for mood in keep:
+            self.helper.metadata.moods.add(mood)
 
     def add_similar(self):
         """
