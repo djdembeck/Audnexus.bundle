@@ -168,7 +168,9 @@ class AudiobookArtist(Agent.Artist):
         update_helper = ArtistUpdateTool(
             'authors', force, lang, media, metadata, Prefs)
 
-        self.call_item_api(update_helper)
+        if not self.call_item_api(update_helper):
+            log.warn('Skipping metadata update: no valid Audnexus response')
+            return
 
         self.compile_metadata(update_helper)
 
@@ -225,18 +227,19 @@ class AudiobookArtist(Agent.Artist):
         request = make_api_request(update_url, helper.api_url)
         if request is None:
             log.error('No response from Audnexus (%s)' % describe_url(update_url))
-            return
+            return False
         try:
             response = json_decode(str(request))
         except Exception as err:
             log.error('Invalid Audnexus response (%s): %s' % (
                 describe_url(update_url), type(err).__name__))
-            return
+            return False
         if (not isinstance(response, dict) or
                 'error' in response or 'asin' not in response):
             log.error('Invalid Audnexus response (%s)' % describe_url(update_url))
-            return
+            return False
         helper.parse_api_response(response)
+        return True
 
     def compile_metadata(self, helper):
         """
@@ -405,7 +408,9 @@ class AudiobookAlbum(Agent.Album):
         update_helper = AlbumUpdateTool(
             'books', force, lang, media, metadata, Prefs)
 
-        self.call_item_api(update_helper)
+        if not self.call_item_api(update_helper):
+            log.warn('Skipping metadata update: no valid Audnexus response')
+            return
 
         self.compile_metadata(update_helper)
 
@@ -465,23 +470,24 @@ class AudiobookAlbum(Agent.Album):
         request = make_api_request(update_url, helper.api_url)
         if request is None:
             log.error('No response from Audnexus (%s)' % describe_url(update_url))
-            return
+            return False
         try:
             response = json_decode(str(request))
         except Exception as err:
             log.error('Invalid Audnexus response (%s): %s' % (
                 describe_url(update_url), type(err).__name__))
-            return
+            return False
         if (not isinstance(response, dict) or
                 'error' in response or 'asin' not in response):
             log.error('Invalid Audnexus response (%s)' % describe_url(update_url))
-            return
+            return False
         helper.parse_api_response(response)
         self.fetch_artwork(helper)
         self.fetch_similar(helper)
 
         # Set date to date object
         helper.date = self.getDateFromString(helper.date)
+        return True
 
     def fetch_artwork(self, helper):
         """
@@ -546,11 +552,10 @@ class AudiobookAlbum(Agent.Album):
             if url and url not in poster_urls:
                 poster_urls.append(url)
 
-        def fetch_poster(url):
+        def fetch_poster(url, fallback):
             data = make_artwork_request(url, helper.api_url)
             if data is not None:
                 return url, data
-            fallback = getattr(helper, 'artwork_fallbacks', {}).get(url)
             if fallback:
                 data = make_artwork_request(fallback, helper.api_url)
                 if data is not None:
@@ -559,9 +564,15 @@ class AudiobookAlbum(Agent.Album):
 
         available_urls = []
         for index, url in enumerate(poster_urls):
+            fallback = getattr(helper, 'artwork_fallbacks', {}).get(url)
+            cached_url = None
             if url in helper.metadata.posters:
+                cached_url = url
+            elif fallback and fallback in helper.metadata.posters:
+                cached_url = fallback
+            if cached_url:
                 if helper.force or index == 0:
-                    poster_url, data = fetch_poster(url)
+                    poster_url, data = fetch_poster(url, fallback)
                     if data is not None:
                         try:
                             helper.metadata.posters[poster_url] = Proxy.Media(
@@ -571,13 +582,13 @@ class AudiobookAlbum(Agent.Album):
                         except Exception as err:
                             log.error('Failed to refresh poster (%s): %s' % (
                                 describe_url(poster_url), type(err).__name__))
-                            available_urls.append(url)
+                            available_urls.append(cached_url)
                     else:
-                        available_urls.append(url)
+                        available_urls.append(cached_url)
                 else:
-                    available_urls.append(url)
+                    available_urls.append(cached_url)
                 continue
-            poster_url, data = fetch_poster(url)
+            poster_url, data = fetch_poster(url, fallback)
             if data is None:
                 continue
             try:

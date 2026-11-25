@@ -271,6 +271,7 @@ class AlbumUpdateTool(UpdateTool):
 
         current_image_id = self.get_amazon_image_id(self.thumb)
         seen_urls = set()
+        parsed_items = 0
         for item in items:
             if not isinstance(item, dict):
                 continue
@@ -285,7 +286,10 @@ class AlbumUpdateTool(UpdateTool):
                 renditions = []
             rendition_url = self.pick_rendition_url(renditions)
             url = stored_url or rendition_url
-            if not url or url in seen_urls or url == self.thumb:
+            if not url:
+                continue
+            parsed_items += 1
+            if url in seen_urls or url == self.thumb:
                 continue
             image_id = item.get('imageId')
             if not isinstance(image_id, (str, type(u''))):
@@ -300,6 +304,10 @@ class AlbumUpdateTool(UpdateTool):
             self.artwork_urls.append(url)
             if len(self.artwork_urls) >= MAX_HISTORY_POSTERS:
                 break
+        if items and not parsed_items:
+            self.artwork_ok = False
+            self.artwork_urls = []
+            self.artwork_fallbacks = {}
 
     def pick_rendition_url(self, renditions):
         """
