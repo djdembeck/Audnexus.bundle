@@ -308,12 +308,18 @@ class AlbumUpdateTool(UpdateTool):
                     break
             else:
                 url = None
+                explicit_image_id = item.get('imageId')
+                if (not isinstance(explicit_image_id, (str, type(u''))) or
+                        not explicit_image_id):
+                    explicit_image_id = None
                 for candidate in rendition_urls:
                     if candidate == self.thumb:
                         continue
                     if (current_image_id and
                             self.get_amazon_image_id(candidate) ==
-                            current_image_id):
+                            current_image_id and
+                            (not explicit_image_id or
+                             explicit_image_id == current_image_id)):
                         continue
                     url = candidate
                     break
@@ -347,6 +353,7 @@ class AlbumUpdateTool(UpdateTool):
             Returns approved rendition URLs in preference order.
         """
         approved = []
+        approved_set = set()
         for preferred in ('1024', '500'):
             for rendition in renditions:
                 if not isinstance(rendition, dict):
@@ -354,17 +361,19 @@ class AlbumUpdateTool(UpdateTool):
                 source = rendition.get('sourceUrl')
                 if (rendition.get('rendition') == preferred and
                         isinstance(source, (str, type(u''))) and source and
-                        is_approved_artwork_url(source, self.api_url) and
-                        source not in approved):
+                        source not in approved_set and
+                        is_approved_artwork_url(source, self.api_url)):
                     approved.append(source)
+                    approved_set.add(source)
         for rendition in renditions:
             if not isinstance(rendition, dict):
                 continue
             source = rendition.get('sourceUrl')
             if (isinstance(source, (str, type(u''))) and source and
-                    is_approved_artwork_url(source, self.api_url) and
-                    source not in approved):
+                    source not in approved_set and
+                    is_approved_artwork_url(source, self.api_url)):
                 approved.append(source)
+                approved_set.add(source)
         return approved
 
     def parse_similar_response(self, response):
@@ -490,6 +499,10 @@ class AlbumUpdateTool(UpdateTool):
                 keep_similar=(store_similar and
                               not getattr(self, 'similar_ok', False)))
             tagger.clear_styles()
+        elif not store_similar:
+            # Clear old recommendations before adding other moods so a
+            # normal tag named like one is not removed after it is added.
+            tagger.clear_similar_moods()
 
         # Genres.
         tagger.add_genres()
@@ -507,8 +520,6 @@ class AlbumUpdateTool(UpdateTool):
         if store_similar:
             tagger.add_similar_moods(
                 replace=getattr(self, 'similar_ok', False))
-        else:
-            tagger.clear_similar_moods()
 
     def set_metadata_title(self):
         """
