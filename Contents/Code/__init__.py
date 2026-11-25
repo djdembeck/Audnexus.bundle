@@ -227,7 +227,7 @@ class AudiobookArtist(Agent.Artist):
             response = json_decode(str(request))
         except Exception as err:
             log.error('Invalid Audnexus response (%s): %s' % (
-                describe_url(update_url), type(err)))
+                describe_url(update_url), err))
             return False
         if (not isinstance(response, dict) or
                 'error' in response or 'asin' not in response):
@@ -470,7 +470,7 @@ class AudiobookAlbum(Agent.Album):
             response = json_decode(str(request))
         except Exception as err:
             log.error('Invalid Audnexus response (%s): %s' % (
-                describe_url(update_url), type(err)))
+                describe_url(update_url), err))
             return False
         if (not isinstance(response, dict) or
                 'error' in response or 'asin' not in response):
@@ -504,7 +504,7 @@ class AudiobookAlbum(Agent.Album):
             helper.artwork_urls = []
             helper.artwork_fallbacks = {}
             log.error('Failed to fetch artwork history (%s): %s' % (
-                describe_url(artwork_url), type(err)))
+                describe_url(artwork_url), err))
 
     def fetch_similar(self, helper):
         """
@@ -520,7 +520,7 @@ class AudiobookAlbum(Agent.Album):
             helper.parse_similar_response(json_decode(str(response)))
         except Exception as err:
             log.error('Failed to fetch similar books (%s): %s' % (
-                describe_url(similar_url), type(err)))
+                describe_url(similar_url), err))
 
     def compile_metadata(self, helper):
         """
@@ -580,7 +580,7 @@ class AudiobookAlbum(Agent.Album):
                             available_urls.append(poster_url)
                         except Exception as err:
                             log.error('Failed to refresh poster (%s): %s' % (
-                                describe_url(poster_url), type(err)))
+                                describe_url(poster_url), err))
                             available_urls.append(cached_url)
                     else:
                         available_urls.append(cached_url)
@@ -597,7 +597,7 @@ class AudiobookAlbum(Agent.Album):
                 available_urls.append(poster_url)
             except Exception as err:
                 log.error('Failed to fetch poster (%s): %s' % (
-                    describe_url(poster_url), type(err)))
+                    describe_url(poster_url), err))
 
         if available_urls:
             if getattr(helper, 'artwork_ok', False):
@@ -661,7 +661,7 @@ def make_api_request(url, api_url):
                         response.headers.get('location'))
         except Exception as err:
             log.error('API request failed (%s): %s' % (
-                describe_url(url), type(err)))
+                describe_url(url), err))
             return None
         if location:
             url = urljoin(url, location)
@@ -695,7 +695,7 @@ def make_artwork_request(url, api_url):
                     status = None
         except Exception as err:
             log.error('Artwork request failed (%s): %s' % (
-                describe_url(url), type(err)))
+                describe_url(url), err))
             return None
         if location and (status is None or 300 <= status < 400):
             url = urljoin(url, location)

@@ -34,7 +34,7 @@
         "id": "store_similar_as_moods",
         "label": "Append similar books as Similar: Mood tags",
         "type": "bool",
-        "default": "true"
+        "default": "false"
     },
     {
         "id": "sort_author_by_last_name",

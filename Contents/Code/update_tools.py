@@ -13,6 +13,11 @@ import os
 # Setup logger
 log = Logging()
 
+try:
+    STRING_TYPES = (basestring,)
+except NameError:
+    STRING_TYPES = (str,)
+
 # Keep the poster picker useful instead of mirroring the entire history.
 MAX_HISTORY_POSTERS = 10
 MAX_SIMILAR_BOOKS = 10
@@ -283,7 +288,7 @@ class AlbumUpdateTool(UpdateTool):
             if not isinstance(legacy, dict):
                 legacy = {}
             stored_url = legacy.get('storedUrl')
-            if not isinstance(stored_url, (str, type(u''))):
+            if not isinstance(stored_url, STRING_TYPES):
                 stored_url = None
             renditions = item.get('renditions')
             if not isinstance(renditions, list):
@@ -309,7 +314,7 @@ class AlbumUpdateTool(UpdateTool):
             else:
                 url = None
                 explicit_image_id = item.get('imageId')
-                if (not isinstance(explicit_image_id, (str, type(u''))) or
+                if (not isinstance(explicit_image_id, STRING_TYPES) or
                         not explicit_image_id):
                     explicit_image_id = None
                 for candidate in rendition_urls:
@@ -335,7 +340,7 @@ class AlbumUpdateTool(UpdateTool):
             if url in seen_urls or url == self.thumb:
                 continue
             item_image_id = item.get('imageId')
-            if (not isinstance(item_image_id, (str, type(u''))) or
+            if (not isinstance(item_image_id, STRING_TYPES) or
                     not item_image_id):
                 item_image_id = self.get_amazon_image_id(url)
             url_image_id = self.get_amazon_image_id(url)
@@ -367,7 +372,7 @@ class AlbumUpdateTool(UpdateTool):
                     continue
                 source = rendition.get('sourceUrl')
                 if (rendition.get('rendition') == preferred and
-                        isinstance(source, (str, type(u''))) and source and
+                        isinstance(source, STRING_TYPES) and source and
                         source not in approved_set and
                         is_approved_artwork_url(source, self.api_url)):
                     approved.append(source)
@@ -376,7 +381,7 @@ class AlbumUpdateTool(UpdateTool):
             if not isinstance(rendition, dict):
                 continue
             source = rendition.get('sourceUrl')
-            if (isinstance(source, (str, type(u''))) and source and
+            if (isinstance(source, STRING_TYPES) and source and
                     source not in approved_set and
                     is_approved_artwork_url(source, self.api_url)):
                 approved.append(source)
@@ -400,7 +405,7 @@ class AlbumUpdateTool(UpdateTool):
             if not isinstance(book, dict):
                 continue
             title = book.get('title')
-            if not isinstance(title, (str, type(u''))):
+            if not isinstance(title, STRING_TYPES):
                 continue
             title = title.strip()
             if title:
@@ -500,7 +505,7 @@ class AlbumUpdateTool(UpdateTool):
         try:
             store_similar = self.prefs['store_similar_as_moods']
         except KeyError:
-            store_similar = True
+            store_similar = False
         if self.force:
             tagger.clear_moods(
                 keep_similar=(store_similar and
@@ -790,12 +795,12 @@ class TagTool:
                 else:
                     name_value = tag
                     tag_type = None
-                if not isinstance(name_value, (str, type(u''))):
+                if not isinstance(name_value, STRING_TYPES):
                     continue
                 name = name_value.strip()
                 if not name:
                     continue
-                if not isinstance(tag_type, (str, type(u''))):
+                if not isinstance(tag_type, STRING_TYPES):
                     tag_type = None
                 prefix = prefixes.get(tag_type, '')
                 self.helper.metadata.moods.add(prefix + name)
@@ -809,7 +814,7 @@ class TagTool:
         if replace:
             keep = []
             for mood in list(self.helper.metadata.moods):
-                if (isinstance(mood, (str, type(u''))) and
+                if (isinstance(mood, STRING_TYPES) and
                         mood.startswith('Similar: ')):
                     continue
                 keep.append(mood)
@@ -823,7 +828,7 @@ class TagTool:
                 name = item.get('name')
             else:
                 name = item
-            if not isinstance(name, (str, type(u''))):
+            if not isinstance(name, STRING_TYPES):
                 continue
             name = name.strip()
             if name:
@@ -835,7 +840,7 @@ class TagTool:
         """
         keep = []
         for mood in list(self.helper.metadata.moods):
-            if (isinstance(mood, (str, type(u''))) and
+            if (isinstance(mood, STRING_TYPES) and
                     mood.startswith('Similar: ')):
                 continue
             keep.append(mood)
@@ -855,7 +860,7 @@ class TagTool:
                 name = item.get('name')
             else:
                 name = item
-            if isinstance(name, (str, type(u''))):
+            if isinstance(name, STRING_TYPES):
                 name = name.strip()
                 if name:
                     names.append(name)
@@ -877,7 +882,7 @@ class TagTool:
             return
         similar = []
         for mood in list(self.helper.metadata.moods):
-            if (isinstance(mood, (str, type(u''))) and
+            if (isinstance(mood, STRING_TYPES) and
                     mood.startswith('Similar: ')):
                 similar.append(mood)
         self.helper.metadata.moods.clear()
