@@ -38,7 +38,13 @@ class UpdateTool:
         self.similar_ok = False
         self.artwork_urls = []
         self.artwork_fallbacks = {}
+        self.artwork_sizes = {}
         self.artwork_ok = False
+        self.poster_order = 'Most recent first'
+        try:
+            self.poster_order = self.prefs['poster_order']
+        except KeyError:
+            pass
 
     def build_url(self):
         """
@@ -277,6 +283,7 @@ class AlbumUpdateTool(UpdateTool):
         self.artwork_ok = False
         self.artwork_urls = []
         self.artwork_fallbacks = {}
+        self.artwork_sizes = {}
         if not isinstance(response, dict):
             return
         items = response.get('items')
@@ -357,7 +364,29 @@ class AlbumUpdateTool(UpdateTool):
             if (stored_ok and fallback_url and
                     fallback_url != stored_url):
                 self.artwork_fallbacks[stored_url] = fallback_url
+            artwork_size = 0
+            for rendition in renditions:
+                if not isinstance(rendition, dict):
+                    continue
+                if rendition.get('sourceUrl') == url:
+                    try:
+                        artwork_size = int(rendition.get('rendition'))
+                    except (TypeError, ValueError):
+                        artwork_size = 0
+                    break
+            if not artwork_size and stored_ok:
+                for rendition in renditions:
+                    if not isinstance(rendition, dict):
+                        continue
+                    try:
+                        candidate_size = int(
+                            rendition.get('rendition'))
+                    except (TypeError, ValueError):
+                        continue
+                    if candidate_size > artwork_size:
+                        artwork_size = candidate_size
             seen_urls.add(url)
+            self.artwork_sizes[url] = artwork_size
             self.artwork_urls.append(url)
             if len(self.artwork_urls) >= MAX_HISTORY_POSTERS:
                 break

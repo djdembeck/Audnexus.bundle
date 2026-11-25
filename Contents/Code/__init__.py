@@ -541,11 +541,29 @@ class AudiobookAlbum(Agent.Album):
         # Thumb.
         # Kept here because of Proxy
         poster_urls = []
-        if helper.thumb:
-            poster_urls.append(helper.thumb)
-        for url in helper.artwork_urls:
-            if url and url not in poster_urls:
-                poster_urls.append(url)
+        history_urls = [url for url in helper.artwork_urls if url]
+        if helper.poster_order == 'Oldest first':
+            history_urls.reverse()
+            poster_urls.extend(history_urls)
+            if helper.thumb:
+                poster_urls.append(helper.thumb)
+        elif helper.poster_order == 'Largest first':
+            history_urls.sort(
+                key=lambda url: helper.artwork_sizes.get(url, 0),
+                reverse=True
+            )
+            if helper.thumb:
+                poster_urls.append(helper.thumb)
+            poster_urls.extend(history_urls)
+        else:
+            if helper.thumb:
+                poster_urls.append(helper.thumb)
+            poster_urls.extend(history_urls)
+        unique_urls = []
+        for url in poster_urls:
+            if url and url not in unique_urls:
+                unique_urls.append(url)
+        poster_urls = unique_urls
 
         def fetch_poster(url, fallback, skip_fallback=False):
             data = make_artwork_request(url, helper.api_url)
