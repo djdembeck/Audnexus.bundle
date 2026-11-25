@@ -177,7 +177,7 @@ There are a few tricks to know about using fix match for books and authors:
 - Narrator as `Style` tag.
 - Authors as `Mood` tag.
 - Series as `Mood` tag (prefixed by `Series:`)
-- Audnexus tags as `Mood` tags, prefixed by type where useful (`Editorial:`, `Award:`, etc.). Disable with the `store_tags_as_moods` preference.
+- Audnexus tags as `Mood` tags, prefixed by type where useful (`Editorial:`, `Award:`, etc.). Disabled by default; enable with the `store_tags_as_moods` preference.
 - Similar books from Audnexus's similar endpoint, stored as `Similar:` Mood tags. Disabled by default; enable with the `store_similar_as_moods` preference.
 - Sorted by Series number and then book title.
 

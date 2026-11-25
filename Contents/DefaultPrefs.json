@@ -28,7 +28,7 @@
         "id": "store_tags_as_moods",
         "label": "Append Audnexus tags (topics, awards, moods) as Plex Mood tags",
         "type": "bool",
-        "default": "true"
+        "default": "false"
     },
     {
         "id": "store_similar_as_moods",
