@@ -318,6 +318,8 @@ class AlbumUpdateTool(UpdateTool):
                 for candidate in rendition_urls:
                     if candidate == self.thumb:
                         continue
+                    if candidate in seen_urls:
+                        continue
                     if (current_image_id and
                             self.get_amazon_image_id(candidate) ==
                             current_image_id):
@@ -333,6 +335,8 @@ class AlbumUpdateTool(UpdateTool):
                 for candidate in rendition_urls:
                     if candidate == self.thumb:
                         continue
+                    if candidate in seen_urls:
+                        continue
                     if (current_image_id and
                             self.get_amazon_image_id(candidate) ==
                             current_image_id):
@@ -342,6 +346,8 @@ class AlbumUpdateTool(UpdateTool):
                 if not url and explicit_image_id and current_image_id:
                     for candidate in rendition_urls:
                         if candidate == self.thumb:
+                            continue
+                        if candidate in seen_urls:
                             continue
                         if (self.get_amazon_image_id(candidate) ==
                                 current_image_id and
