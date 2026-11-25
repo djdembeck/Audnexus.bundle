@@ -643,6 +643,16 @@ def json_decode(output):
         return None
 
 
+def get_header(headers, name):
+    """
+        Reads a header without assuming dict.get is available.
+    """
+    try:
+        return headers[name]
+    except (KeyError, TypeError, AttributeError):
+        return None
+
+
 def make_api_request(url, api_url):
     """
         Fetches an Audnexus API URL, following redirects only within the
@@ -657,8 +667,8 @@ def make_api_request(url, api_url):
             response = HTTP.Request(
                 url, timeout=90, sleep=1, follow_redirects=False
             )
-            location = (response.headers.get('Location') or
-                        response.headers.get('location'))
+            location = (get_header(response.headers, 'Location') or
+                        get_header(response.headers, 'location'))
         except Exception as err:
             log.error('API request failed (%s): %s' % (
                 describe_url(url), err))
@@ -683,10 +693,10 @@ def make_artwork_request(url, api_url):
             response = HTTP.Request(
                 url, timeout=90, sleep=1, follow_redirects=False
             )
-            location = (response.headers.get('Location') or
-                        response.headers.get('location'))
-            content_type = (response.headers.get('Content-Type') or
-                            response.headers.get('content-type') or '')
+            location = (get_header(response.headers, 'Location') or
+                        get_header(response.headers, 'location'))
+            content_type = (get_header(response.headers, 'Content-Type') or
+                            get_header(response.headers, 'content-type') or '')
             status = getattr(response, 'status', None)
             if status is not None:
                 try:
