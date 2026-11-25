@@ -40,7 +40,7 @@ class UpdateTool:
         self.artwork_fallbacks = {}
         self.artwork_sizes = {}
         self.artwork_ok = False
-        self.poster_order = 'Most recent cover first'
+        self.poster_order = 'Most recent cover'
         try:
             self.poster_order = self.prefs['poster_order']
         except KeyError:
