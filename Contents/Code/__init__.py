@@ -17,6 +17,11 @@ try:
     from urlparse import urlparse, urljoin
 except ImportError:
     from urllib.parse import urlparse, urljoin
+try:
+    from urllib import quote
+except ImportError:
+    from urllib.parse import quote
+from xml.etree import ElementTree
 from update_tools import (
     AlbumUpdateTool,
     ArtistUpdateTool,
@@ -670,6 +675,8 @@ class AudiobookAlbum(Agent.Album):
                         validate_keys.append(poster_url)
             # The first poster in the ordered collection is the default.
             helper.metadata.posters.validate_keys(validate_keys)
+            if helper.artwork_ok:
+                set_plex_poster(helper)
         # Rating.
         helper.set_metadata_rating()
 
@@ -698,6 +705,35 @@ def json_decode(output):
         return json.loads(output, encoding="utf-8")
     except AttributeError:
         return None
+
+
+def set_plex_poster(helper):
+    """
+        Forces Plex to select the first agent-provided poster.
+    """
+    try:
+        item_id = helper.metadata.id
+        if not item_id:
+            return
+        base = 'http://127.0.0.1:32400/library/metadata/%s' % item_id
+        response = HTTP.Request(base + '/posters', timeout=10, sleep=0)
+        if response is None:
+            return
+        root = ElementTree.fromstring(str(response))
+        selected = None
+        for photo in root.findall('.//Photo'):
+            if photo.get('provider') == 'com.plexapp.agents.audnexus':
+                selected = photo.get('key')
+                break
+        if not selected:
+            return
+        HTTP.Request(
+            base + '/poster?url=' + quote(selected, safe=''),
+            method='PUT', timeout=10, sleep=0
+        )
+    except Exception:
+        log.error('Failed to select Plex poster (%s)' % (
+            describe_artwork_url(helper.thumb)))
 
 
 def get_header(headers, name):
