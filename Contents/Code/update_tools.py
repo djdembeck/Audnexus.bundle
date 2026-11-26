@@ -662,7 +662,7 @@ class ArtistUpdateTool(UpdateTool):
             and crop each landscape photo to a square at the horizontal center
         """
         if not image_url:
-            return image_url
+            return ''
         try:
             image_file_dl = urllib.urlopen(image_url)
             image_file_dl_contents = image_file_dl.read()
