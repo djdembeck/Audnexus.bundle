@@ -20,6 +20,7 @@ We recommend [AudiobookDB](https://audiobookdb.org/) for metadata, whether you [
   - [Install Audnexus.bundle](#install-audnexusbundle)
   - [Set up your library](#set-up-your-library)
   - [Agent settings](#agent-settings)
+  - [Using a self-hosted or newer API](#using-a-self-hosted-or-newer-api)
   - [Fix matches and use Quick Match](#fix-matches-and-use-quick-match)
   - [Metadata added by Audnexus](#metadata-added-by-audnexus)
 - [Troubleshooting](#troubleshooting)
@@ -66,7 +67,7 @@ Both bundles can stay installed. When AudiobookDB resolves an existing pinned Au
 
 ## Keep using Audnexus
 
-These instructions are for the legacy Audnexus.bundle agent. The bundle uses the public Audnexus API at `https://api.audnex.us`.
+These instructions are for the legacy Audnexus.bundle agent. By default, the bundle uses the public Audnexus API at `https://api.audnex.us`.
 
 ### Prepare your files
 
@@ -112,8 +113,12 @@ In Plex Web, open **Settings → Server → Agents**, select **Audnexus Agent**,
 | Setting | Default |
 | --- | --- |
 | Search region | `us` |
+| Audnexus API base URL (self-hosted or newer deployment) | `https://api.audnex.us` |
 | Keep existing genres | Off |
 | Append authors as Mood tags | On |
+| Append Audnexus tags (topics, awards, moods) as Plex Mood tags (`store_tags_as_moods`) | Off |
+| Append similar books as Similar: Mood tags (`store_similar_as_moods`) | Off |
+| Default cover art | Most recent cover |
 | Sort artist by last name | On |
 | Simplify book titles | Off |
 | Logging level | `WARN` |
@@ -121,6 +126,12 @@ In Plex Web, open **Settings → Server → Agents**, select **Audnexus Agent**,
 The available regions are `au`, `ca`, `de`, `es`, `fr`, `in`, `it`, `jp`, `us`, and `uk`. The agent was built for English-based regions. Logging also supports `DEBUG`, `INFO`, and `ERROR`.
 
 When enabled, **Simplify book titles** omits the separate subtitle field. It can also remove a trailing series part such as `, Book 1`, or a trailing `abridged` or `unabridged` marker, with or without parentheses.
+
+### Using a self-hosted or newer API
+
+Historical artwork, tags, and similar books require an Audnexus deployment running the current server with history enabled. The public API at `https://api.audnex.us` may return an older payload with no history, no tags, and no similar books.
+
+To use a self-hosted instance, set **Audnexus API base URL** in the agent settings to that instance, for example `https://audnexus.example.com`. The agent ignores a trailing slash.
 
 ### Fix matches and use Quick Match
 
@@ -150,7 +161,10 @@ When available, the agent adds the following:
 
 - Artists: an image, biography, genres, and similar authors. By default, names sort by last name. Books with multiple authors appear under the first author.
 - Albums: cover art up to 3200x3200, Audible user rating, release date, publisher, and a plot summary in Review. It adds up to 2 parent genres and 4 sub-genres.
+- Cover art: Select **Default cover art** in the agent settings to choose **Most recent cover**, **Oldest historical cover**, or **Largest resolution cover**. When Audnexus has retained historical covers, they also appear as choices in Plex's artwork picker.
 - Album tags: narrators as Style, authors as Mood when enabled, and series as Mood with a `Series:` prefix. Albums sort by series number and then title.
+- Audnexus tags: When enabled, the agent adds Audnexus tags as Mood tags, with type prefixes where useful (such as `Editorial:` and `Award:`). Enable them with `store_tags_as_moods` (Off by default).
+- Similar books: When enabled, the agent adds similar books from Audnexus's similar endpoint as `Similar:` Mood tags. Enable them with `store_similar_as_moods` (Off by default).
 
 The agent cannot create series collections itself. The [Audnexus and Kometa guide](https://github.com/book-tools/audnexus-kometa-series) explains how to create them from the series Mood tags.
 
