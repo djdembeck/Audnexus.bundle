@@ -52,6 +52,14 @@ def Start():
         ),
         log_level="info"
     )
+    policy = 'Keep saved posters'
+    try:
+        policy = Prefs['poster_update_policy']
+    except KeyError:
+        pass
+    use_latest = policy == 'Always use latest upstream cover'
+    AudiobookAlbum.persist_stored_files = use_latest
+    AudiobookArtist.persist_stored_files = use_latest
 
 
 class AudiobookArtist(Agent.Artist):
@@ -545,6 +553,11 @@ class AudiobookAlbum(Agent.Album):
         helper.set_metadata_studio()
         # Summary.
         helper.set_metadata_summary()
+        # Poster policy.
+        if helper.poster_update_policy == 'Keep saved posters':
+            helper.set_metadata_rating()
+            helper.log_update_metadata()
+            return
         # Thumb.
         # Kept here because of Proxy
         poster_urls = []

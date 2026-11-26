@@ -69,6 +69,18 @@ class UpdateTool:
         }
         self.poster_order = poster_aliases.get(
             self.poster_order, self.poster_order)
+        self.poster_update_policy = 'Keep saved posters'
+        try:
+            self.poster_update_policy = self.prefs['poster_update_policy']
+        except KeyError:
+            pass
+        poster_policy_aliases = {
+            'Always use latest/upstream cover': (
+                'Always use latest upstream cover'),
+            'Keep saved and do not update': 'Keep saved posters',
+        }
+        self.poster_update_policy = poster_policy_aliases.get(
+            self.poster_update_policy, self.poster_update_policy)
         self.current_artwork_size = 0
 
     def build_url(self):

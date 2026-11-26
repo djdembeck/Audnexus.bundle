@@ -48,6 +48,16 @@
         "default": "Most recent cover"
     },
     {
+        "id": "poster_update_policy",
+        "label": "Poster updates: ",
+        "type": "enum",
+        "values": [
+            "Always use latest upstream cover",
+            "Keep saved posters"
+        ],
+        "default": "Keep saved posters"
+    },
+    {
         "id": "sort_author_by_last_name",
         "label": "Sort artist by name [Last, First]",
         "type": "bool",
