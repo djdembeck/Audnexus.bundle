@@ -665,6 +665,10 @@ class AudiobookAlbum(Agent.Album):
                         validate_keys.append(poster_url)
             # Keep the current cover first, then history newest-first.
             helper.metadata.posters.validate_keys(validate_keys)
+            # Plex keeps the previously selected poster unless the item's
+            # thumb is updated; point it at the pref-ordered first poster.
+            if validate_keys:
+                helper.metadata.thumb = validate_keys[0]
         # Rating.
         helper.set_metadata_rating()
 
