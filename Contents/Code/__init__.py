@@ -65,6 +65,7 @@ class AudiobookArtist(Agent.Artist):
         'ja',
     ]
     primary_provider = True
+    persist_stored_files = False
     accepts_from = ['com.plexapp.agents.localmedia']
 
     prev_search_provider = 0
@@ -276,6 +277,7 @@ class AudiobookAlbum(Agent.Album):
         'ja',
     ]
     primary_provider = True
+    persist_stored_files = False
     accepts_from = ['com.plexapp.agents.localmedia']
 
     prev_search_provider = 0
@@ -621,7 +623,7 @@ class AudiobookAlbum(Agent.Album):
                         else:
                             try:
                                 helper.metadata.posters[poster_url] = Proxy.Media(
-                                    data, sort_order=index
+                                    data, sort_order=index + 1
                                 )
                                 append_available(poster_url)
                             except Exception:
@@ -644,7 +646,7 @@ class AudiobookAlbum(Agent.Album):
                 continue
             try:
                 helper.metadata.posters[poster_url] = Proxy.Media(
-                    data, sort_order=index
+                    data, sort_order=index + 1
                 )
                 append_available(poster_url)
             except Exception:
@@ -670,6 +672,9 @@ class AudiobookAlbum(Agent.Album):
                         validate_keys.append(poster_url)
             # The first poster in the ordered collection is the default.
             helper.metadata.posters.validate_keys(validate_keys)
+            if available_urls:
+                helper.metadata.posters.sort_these_keys_first(
+                    available_urls[:1])
         # Rating.
         helper.set_metadata_rating()
 
