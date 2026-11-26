@@ -731,9 +731,9 @@ def set_plex_poster(helper):
             base + '/poster?url=' + quote(selected, safe=''),
             method='PUT', timeout=10, sleep=0
         )
-    except Exception:
-        log.error('Failed to select Plex poster (%s)' % (
-            describe_artwork_url(helper.thumb)))
+    except Exception as err:
+        log.error('Failed to select Plex poster (%s) (%s)' % (
+            describe_artwork_url(helper.thumb), err))
 
 
 def get_header(headers, name):
