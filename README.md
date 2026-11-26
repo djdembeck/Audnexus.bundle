@@ -1,175 +1,202 @@
 <p align="center">
-  <a href="" rel="noopener">
- <img width=200px height=200px src="../assets/logos/logo.png?raw=true" alt="Project logo"></a>
+  <img src="https://raw.githubusercontent.com/djdembeck/Audnexus.bundle/assets/logos/logo.png" alt="Audnexus logo" width="200">
 </p>
 
-<h3 align="center">Audnexus.bundle</h3>
+<h1 align="center">Audnexus.bundle</h1>
 
-<div align="center">
+**Legacy agent:** Audnexus.bundle is a Plex Music metadata agent for audiobooks. This is probably its last update.
 
-[![Status](https://img.shields.io/badge/status-active-success.svg)]()
-[![GitHub Issues](https://img.shields.io/github/issues/djdembeck/Audnexus.bundle.svg)](https://github.com/djdembeck/Audnexus.bundle/issues)
-[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/djdembeck/Audnexus.bundle.svg)](https://github.com/djdembeck/Audnexus.bundle/pulls)
-[![License](https://img.shields.io/badge/license-GNUGPL-blue.svg)](/LICENSE)
-[![CodeFactor Grade](https://img.shields.io/codefactor/grade/github/djdembeck/Audnexus.bundle)](https://www.codefactor.io/repository/github/djdembeck/Audnexus.bundle)
+The bundle gets author and book data from the separate [Audnexus API](https://github.com/laxamentumtech/audnexus), which stays online for existing integrations. Plex displays authors as artists and books as albums.
 
-</div>
+We recommend [AudiobookDB](https://audiobookdb.org/) for metadata, whether you [stay on Plex](#use-audiobookdb-in-plex) or [move to Audiobookshelf](#use-audiobookdb-with-audiobookshelf). AudiobookDB curates its records and separates books from individual audiobook recordings. Audnexus returns provider data as-is. You can also [keep using this bundle](#keep-using-audnexus).
 
----
+## Contents
 
-<p align="center"> An <a href="https://github.com/djdembeck/audnexus">audnex.us</a> client, providing rich author and audiobook data to Plex via its legacy plugin agent system.
-    <br> 
-</p>
+- [Legacy agents in Plex](#legacy-agents-in-plex)
+- [Use AudiobookDB in Plex](#use-audiobookdb-in-plex)
+- [Use AudiobookDB with Audiobookshelf](#use-audiobookdb-with-audiobookshelf)
+- [Keep using Audnexus](#keep-using-audnexus)
+  - [Prepare your files](#prepare-your-files)
+  - [Install Audnexus.bundle](#install-audnexusbundle)
+  - [Set up your library](#set-up-your-library)
+  - [Agent settings](#agent-settings)
+  - [Using a self-hosted or newer API](#using-a-self-hosted-or-newer-api)
+  - [Fix matches and use Quick Match](#fix-matches-and-use-quick-match)
+  - [Metadata added by Audnexus](#metadata-added-by-audnexus)
+- [Troubleshooting](#troubleshooting)
+- [Updates](#updates)
+- [Contributing](#contributing)
+- [License](#license)
 
-## 📝 Table of Contents
+## Legacy agents in Plex
 
-- [About](#about)
-- [Getting Started](#getting_started)
-- [Configuring](#config)
-- [Usage](#usage)
-- [Contributing](CONTRIBUTING.md)
+Both Audnexus.bundle and its successor, AudiobookDB.bundle, need a Plex Media Server that still includes legacy agents. Plex [plans to remove the legacy agent system](https://forums.plex.tv/t/announcement-custom-metadata-providers/934384) from new server releases. Its announcement describes replacement metadata providers for Movie and TV libraries, with Music to come.
 
-## 🧐 About <a name = "about"></a>
+On Plex Media Server 1.43.0 and later, legacy choices can be hidden when you create a library or edit one that uses a modern agent. In Plex Web, open **Settings → [your server] → Library** and enable **Show legacy agents during library setup**. Plex Support calls this **Show Legacy Agent during library set up**. Existing libraries that use legacy agents keep those choices visible. See [Plex's agent settings guide](https://support.plex.tv/articles/200241558-agents/).
 
-The aim of this project is to automate as much as possible, and make some intelligent, transparent choices for the user. All data used by this plugin is sourced from the parent aggregator, [audnex.us](https://github.com/djdembeck/audnexus). By using the audnexus API, searches and matches, which are cached, are greatly accelerated over scraping each search and item page from HTML. Additionally, the API can have multiple sources of data used for each book entry.
+This setting reveals legacy choices only while the server includes them. It cannot restore legacy support after Plex removes it.
 
-Audnexus will first search a book/author to see if it's come across it before. If it's found, it returns them straight away. If not, it requests that the aggregator import all the available data. Thus, the more people who use audnexus' client plugins, the faster the API will be and more data complete. You can also run a fork of the API yourself, see the above repo on how to do that.
+## Use AudiobookDB in Plex
 
-Available regions:
-- `[au]` - `.com.au`
-- `[ca]` - `.ca`
-- `[de]` - `.de`
-- `[es]` - `.es`
-- `[fr]` - `.fr`
-- `[in]` - `.in`
-- `[it]` - `.it`
-- `[jp]` - `.co.jp`
-- `[us]` - `.com`
-- `[uk]` - `.co.uk`
+[AudiobookDB Agent](https://github.com/laxamentumtech/AudiobookDB.bundle) is a separate successor to Audnexus.bundle. You need Git on the Plex server, a server with [legacy agent support](#legacy-agents-in-plex), and an AudiobookDB account with a verified email address. Use a Music library for your books. See [file layout and tags](#prepare-your-files) if you are setting one up.
 
-***NOTE***: The agent was built for English-based regions. If you find an issue with your region, please open a new issue or PR.
+1. Install AudiobookDB Agent from source. In your Plex [Plug-ins folder](https://support.plex.tv/articles/201106098-how-do-i-find-the-plug-ins-folder/), clone its `develop` branch. See the successor's [source installation guide](https://github.com/laxamentumtech/AudiobookDB.bundle/blob/develop/README.md#source-installation) for details:
 
-## 🏁 Getting Started <a name = "getting_started"></a>
+   ```sh
+   git clone -b develop https://github.com/laxamentumtech/AudiobookDB.bundle.git
+   ```
 
-Getting the agent up and running is a very smooth process, whether this is your first foray into audiobooks or you are migrating a library from another audiobooks agent. We look forward to getting you high quality data!
+2. Restart Plex Media Server.
+3. In your [AudiobookDB](https://audiobookdb.org/) account settings, use the **API Key** card to generate a personal key. Copy and store it securely because it is shown only once. Full-library matching requires the key.
+4. In Plex Web, open **Settings → Server → Agents**, select **AudiobookDB Agent**, and open its gear. Enter the full key and save. The [successor's configuration guide](https://github.com/laxamentumtech/AudiobookDB.bundle/blob/develop/README.md#configuration) has more detail.
+5. Find a title in [AudiobookDB](https://audiobookdb.org/) that matches one of your books. Note a catalog detail, such as its summary or cover. For an existing library, choose a detail that is absent or different in Plex.
+6. If needed, enable the [legacy agent setting](#legacy-agents-in-plex). Create or edit your Music library. Under **Advanced**, select **AudiobookDB Agent** and save.
+7. For an existing library, choose **Manage Library → Refresh All Metadata**. For a new library, let Plex scan and match the books.
+8. Open that book's album in Plex and check that the detail matches AudiobookDB.
 
-### Prerequisites
+Both bundles can stay installed. When AudiobookDB resolves an existing pinned Audnexus ID, the next refresh migrates it to an AudiobookDB ID. Unresolved or ambiguous pins remain unchanged. See the [migration guide](https://github.com/laxamentumtech/AudiobookDB.bundle/blob/develop/README.md#migrating-from-audnexus) for what to do with them.
 
-- Plex Media Server `v1.24.4.5081` or greater.
-- `git` installed on system, as this is the preferred method of installing/updating the agent. You can also extract the zip instead.
-- Files are expected to be in/tested with common audiobook [file structure](https://support.plex.tv/articles/200265296-adding-music-media-from-folders/) and tags, specifically from either [Bragi Books](https://github.com/djdembeck/bragibooks) or [Seanap's guide](https://github.com/seanap/Plex-Audiobook-Guide). In particular, you are expected to have the following structure: `Author Name/Book Name/Book Name: Subtitle.m4b` with `album` and `albumartist` tags. This is imperative for proper matching!
+## Use AudiobookDB with Audiobookshelf
 
-### Installing
+[Audiobookshelf](https://www.audiobookshelf.org/) avoids the Plex legacy agent dependency. You can use AudiobookDB data in either of these ways:
 
-If you are new to getting plugins on your system or do not have access to `git`, go through this Plex documentation: [How do I manually install a plugin?
-](https://support.plex.tv/articles/201187656-how-do-i-manually-install-a-plugin/) If you are already familiar with the plugins system, and have `git`, follow the below steps.
+- The early, third-party [abs-audiobookdb adapter](https://github.com/H2OKing89/abs-audiobookdb) connects AudiobookDB to Audiobookshelf's custom metadata providers. It needs a running Audiobookshelf server with administrator access, an AudiobookDB API key, and a real contact email or public HTTPS contact URL for API requests. The container setup needs Docker on an Intel/AMD 64-bit host. To run without Docker, get the adapter's source and follow the [native setup](https://github.com/H2OKing89/abs-audiobookdb/blob/main/docs/deployment.md#run-without-docker) with Go 1.25 or newer. After setup, open a book's **Match** tab, select **AudiobookDB**, search, and apply a result.
+- [Bragibooks](https://github.com/djdembeck/bragibooks) matches books against AudiobookDB and writes tags to processed audio files. Add the tagged output to an Audiobookshelf book library. The [Audiobookshelf metadata guide](https://github.com/audiobookshelf/audiobookshelf-docs/blob/master/docs/documentation/libraries/book-library/2.book-metadata.md) explains how it reads embedded tags and how local metadata priority can affect the result.
 
-1. Clone (or unzip) this project into your Plex `Plug-ins` directory:
+<a name="getting_started"></a>
 
+## Keep using Audnexus
+
+These instructions are for the legacy Audnexus.bundle agent. By default, the bundle uses the public Audnexus API at `https://api.audnex.us`.
+
+### Prepare your files
+
+Organize your audiobooks by author and book, and set the `album` and `albumartist` tags. For example:
+
+```text
+Author Name/Book Name/Book Name: Subtitle.m4b
 ```
-git clone https://github.com/djdembeck/Audnexus.bundle.git
+
+[Bragibooks](https://github.com/djdembeck/bragibooks) and [Seanap's audiobook guide](https://github.com/seanap/Plex-Audiobook-Guide) can help prepare files and tags. Plex also explains its [music folder layout](https://support.plex.tv/articles/200265296-adding-music-media-from-folders/).
+
+### Install Audnexus.bundle
+
+The original minimum was Plex Media Server `v1.24.4.5081`. Your server must also still include [legacy agents](#legacy-agents-in-plex). Git is needed only for the clone method.
+
+1. On the Plex server, open its [Plug-ins folder](https://support.plex.tv/articles/201106098-how-do-i-find-the-plug-ins-folder/) and clone this repository:
+
+   ```sh
+   git clone https://github.com/djdembeck/Audnexus.bundle.git
+   ```
+
+   Alternatively, download the source ZIP from the [project page](https://github.com/djdembeck/Audnexus.bundle), extract it, and place the folder in `Plug-ins`. Rename the folder so it ends in `.bundle` and its `Contents` folder sits directly inside it. See [Plex's manual installation guide](https://support.plex.tv/articles/201187656-how-do-i-manually-install-a-plugin/).
+2. Restart Plex Media Server.
+
+### Set up your library
+
+1. In Plex Web, create a Music library and add your audiobook folders, or edit an existing Music library.
+2. In the library's **Advanced** tab, choose these settings:
+   - Scanner: **Plex Music Scanner**
+   - Agent: **Audnexus Agent**
+   - Leave **Store track progress** checked and uncheck the other boxes.
+   - Genres: **Embedded tags**
+   - Album Art: **Local Files Only**
+3. Save the library. For a new library, let Plex scan and match your books.
+4. For an existing library, choose **Manage Library → Refresh All Metadata**. Plex refreshes authors first, then their albums. This can take some time.
+
+Open a matched book album and look for its cover or summary. If the match is wrong or missing, try [Fix Match](#fix-matches-and-use-quick-match).
+
+### Agent settings
+
+In Plex Web, open **Settings → Server → Agents**, select **Audnexus Agent**, and open its gear. The defaults are:
+
+| Setting | Default |
+| --- | --- |
+| Search region | `us` |
+| Audnexus API base URL (self-hosted or newer deployment) | `https://api.audnex.us` |
+| Keep existing genres | Off |
+| Append authors as Mood tags | On |
+| Append Audnexus tags (topics, awards, moods) as Plex Mood tags (`store_tags_as_moods`) | Off |
+| Append similar books as Similar: Mood tags (`store_similar_as_moods`) | Off |
+| Default cover art | Most recent cover |
+| Sort artist by last name | On |
+| Simplify book titles | Off |
+| Logging level | `WARN` |
+
+The available regions are `au`, `ca`, `de`, `es`, `fr`, `in`, `it`, `jp`, `us`, and `uk`. The agent was built for English-based regions. Logging also supports `DEBUG`, `INFO`, and `ERROR`.
+
+When enabled, **Simplify book titles** omits the separate subtitle field. It can also remove a trailing series part such as `, Book 1`, or a trailing `abridged` or `unabridged` marker, with or without parentheses.
+
+### Using a self-hosted or newer API
+
+Historical artwork, tags, and similar books require an Audnexus deployment running the current server with history enabled. The public API at `https://api.audnex.us` may return an older payload with no history, no tags, and no similar books.
+
+To use a self-hosted instance, set **Audnexus API base URL** in the agent settings to that instance, for example `https://audnexus.example.com`. The agent ignores a trailing slash.
+
+### Fix matches and use Quick Match
+
+In Plex Web, open the book album or author artist. Choose **… → Fix Match** (or **Match** for an unmatched item), then **Search Options**. Search by name or enter an Audible ASIN and choose the result. For books, an ASIN in the file path takes precedence over the search field. If the path contains the wrong ASIN, correct or remove it, rescan the library, and retry Fix Match. See [Plex's Fix Match guide](https://support.plex.tv/articles/201018497-fix-match-match/).
+
+An ASIN bypasses the name search. Put a region code in brackets before or after the search terms to override the default region. For example, this searches the US region for *Project Hail Mary* by its Audible ASIN:
+
+```text
+[us] B08G9PRS1K
 ```
 
-2. Restart your Plex Media Server.
+For a book, you can also put the ASIN and region in the filename or book folder:
 
-For future updates, run the below commmand from within the `Audnexus.bundle` folder.
-
+```text
+Andy Weir/Project Hail Mary B08G9PRS1K [us]/Project Hail Mary.m4b
 ```
+
+Author Quick Matches must be entered manually. Authors cannot be Quick Matched from filenames.
+
+Book results show the title and abbreviated author and narrator names. Some editions may look identical. A score of `100` is usually the right result, but check the narrator or use the ASIN for the recording you want. Scores consider title and author similarity, library language (2 points), and result position (a 1-point deduction per result). Music agents cannot use the Year search field.
+
+If an author search fails, try a variation such as removing a middle initial. Some authors have no Audible profile and therefore no Audnexus author entry.
+
+### Metadata added by Audnexus
+
+When available, the agent adds the following:
+
+- Artists: an image, biography, genres, and similar authors. By default, names sort by last name. Books with multiple authors appear under the first author.
+- Albums: cover art up to 3200x3200, Audible user rating, release date, publisher, and a plot summary in Review. It adds up to 2 parent genres and 4 sub-genres.
+- Cover art: Select **Default cover art** in the agent settings to choose **Most recent cover**, **Oldest historical cover**, or **Largest resolution cover**. When Audnexus has retained historical covers, they also appear as choices in Plex's artwork picker.
+- Album tags: narrators as Style, authors as Mood when enabled, and series as Mood with a `Series:` prefix. Albums sort by series number and then title.
+- Audnexus tags: When enabled, the agent adds Audnexus tags as Mood tags, with type prefixes where useful (such as `Editorial:` and `Award:`). Enable them with `store_tags_as_moods` (Off by default).
+- Similar books: When enabled, the agent adds similar books from Audnexus's similar endpoint as `Similar:` Mood tags. Enable them with `store_similar_as_moods` (Off by default).
+
+The agent cannot create series collections itself. The [Audnexus and Kometa guide](https://github.com/book-tools/audnexus-kometa-series) explains how to create them from the series Mood tags.
+
+## Troubleshooting
+
+If an agent does not appear in the library's **Advanced** settings:
+
+1. Check that the bundle is directly inside Plex's `Plug-ins` folder and that its `Contents` folder is directly inside the bundle.
+2. Restart Plex Media Server.
+3. Check that your server still includes legacy agents and that the [legacy agents setting](#legacy-agents-in-plex) is enabled when needed.
+4. Check that you are creating or editing a Music library.
+
+For an incorrect match, check the file layout and tags, then try [Fix Match or an ASIN](#fix-matches-and-use-quick-match). For a library using AudiobookDB Agent, see its [migration guide](https://github.com/laxamentumtech/AudiobookDB.bundle/blob/develop/README.md#migrating-from-audnexus) for unresolved pins.
+
+For a failed AudiobookDB refresh, see the successor's [API details](https://github.com/laxamentumtech/AudiobookDB.bundle/blob/develop/README.md#api-details). It covers key, throttling, and network errors.
+
+## Updates
+
+For a Git installation of Audnexus.bundle, run this command inside the `Audnexus.bundle` folder, then restart Plex Media Server:
+
+```sh
 git pull
 ```
 
-## 🔧 Configuring the agent <a name = "config"></a>
+For a ZIP installation, download and extract the [source ZIP](https://github.com/djdembeck/Audnexus.bundle/archive/refs/heads/main.zip). Rename the extracted folder to `Audnexus.bundle`, with `Contents` directly inside it. Remove the old Audnexus bundle folder from `Plug-ins`, then move the extracted folder there. Leave your audiobook files and Plex library data untouched. Restart Plex Media Server.
 
-If you wish to use local tags/images, you can follow the directions [here](https://github.com/seanap/Plex-Audiobook-Guide#configure-metadata-agent-in-plex), but this agent assumes you will not.
+See the [changelog](CHANGELOG.md) and [releases](https://github.com/djdembeck/Audnexus.bundle/releases) for changes.
 
-### Using quick match
+## Contributing
 
-There are currently 2 quick match/search override options:
-- **ASIN**: Bypasses search and explicitly uses the ASIN Provided
-- **Region** (ie `[uk]`): Searches the given region instead of your set region.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Quick match supports filename and manual search.
+## License
 
-This works for both authors and books. By default, the ASIN is searched in your library's `region` (from agent settings).
-
-You may override region on a per author/book basis using the region code in brackets, such as `[uk]` either before or after the other search terms.
-
-Here are some quick match examples:
-
-- Override region
-```
-[uk] NAME
-```
-- Override asin and region
-```
-[uk] B01234ABCD
-```
-- Override ASIN and Region from filename
-```
-Author Name/Book Name B01234ABCD [uk]/Book Name: Subtitle.m4b
-```
-
-***NOTE***: Authors cannot be quick matched from filenames.
-
-### Create an audiobook library
-
-- From within Plex Web, create a new library, with the MUSIC type, and name it Audiobooks.
-- Add your folders.
-
-In the ADVANCED tab:
-- Scanner: `Plex Music Scanner`
-- Agent: `Audnexus Agent`
-- Toggle agent settings as you please.
-- Uncheck all boxes except `Store track progress`
-- Genres: `Embedded tags`
-- Album Art: `Local Files Only`
-
-Add the library and go do anything but read a physical book while the magic happens :)
-
-### Migrate an existing audiobook library
-
-If you are coming from another Audiobooks agent, such as Audiobooks.bundle, then upgrading is super easy!
-
-- First, follow the steps for the ADVANCED tab above and save the settings.
-- Second, go to the Audiobooks library settings, `Manage Library > Refresh All Metadata`. This will programmatically upgrade authors, and then every album under those authors.
-
-Just like adding a new library, upgrading one can take some time to switch all your data over.
-
-## 🎈 Usage <a name="usage"></a>
-
-### Manually fixing matches
-There are a few tricks to know about using fix match for books and authors:
-- You may use [Quick Match](#using-quick-match) if you already know the ASIN.
-- Some authors do not have an Audible profile. These will not have an Audnexus DB entry.
-- You may need to modify author names in search to find them (for example, removing a middle initial). This is a search limitation we are looking to improve.
-- Book results come back in the format of: `"TITLE" by AUTHOR_FIRSTINITIAL.AUTHOR_LASTNAME w/ NARRATOR_FIRSTINITIAL.NARRATOR_LASTNAME`
-- Year field cannot be used by music agents (what we use), so it's an irrelevant parameter.
-- Scores are based on the following criteria: Book title ([Levenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance)), Author(s) name ([Levenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance)), language of book vs language of library (2 points), and 1 point deduction for each result (relevance score).
-- Identical results for book may appear. Typically the one with a score of `100` is the 'correct' one.
-
-### Data that the agent brings to your library:
-
-#### Authors (Artists)
-- High resolution image.
-- Text description/bio.
-- Genres
-- Sorted by `Last Name, First Name`
-- Combines books with multiple authors into the first author, reducing duplicate author entries/pages.
-- Similar authors
-
-#### Books (Albums)
-- High resolution cover (up to 3200x3200).
-- Rating (currently based on Audible user rating).
-- Release date.
-- Record label (publisher)
-- Review (plot summary)
-- Genres and sub-genres:
-  - Up to 2 parent category genres.
-  - Up to 4 sub-category genres.
-- Narrator as `Style` tag.
-- Authors as `Mood` tag.
-- Series as `Mood` tag (prefixed by `Series:`)
-- Sorted by Series number and then book title.
-
-**This agent cannot create collections for your series'. 
-If you would like to set up automatic collections for book series', you can do so with the guide here: [Audnexus+Plex-Meta-Manager: Audiobook Series Collections](https://github.com/book-tools/audnexus-pmm-series)**
+See [LICENSE](LICENSE).
