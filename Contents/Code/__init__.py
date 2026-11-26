@@ -65,7 +65,6 @@ class AudiobookArtist(Agent.Artist):
         'ja',
     ]
     primary_provider = True
-    persist_stored_files = False
     accepts_from = ['com.plexapp.agents.localmedia']
 
     prev_search_provider = 0
@@ -277,7 +276,6 @@ class AudiobookAlbum(Agent.Album):
         'ja',
     ]
     primary_provider = True
-    persist_stored_files = False
     accepts_from = ['com.plexapp.agents.localmedia']
 
     prev_search_provider = 0
@@ -655,12 +653,12 @@ class AudiobookAlbum(Agent.Album):
 
         if available_urls:
             if helper.artwork_ok:
-                # The first poster in the collection is the selected one.
-                # validate_keys only prunes, so drop stale entries first.
-                for stale in list(helper.metadata.posters.keys()):
-                    if stale not in available_urls:
-                        del helper.metadata.posters[stale]
+                # Keep cached posters as fallback candidates after the
+                # pref-ordered current cover.
                 validate_keys = available_urls
+                for poster_url in helper.metadata.posters:
+                    if poster_url not in validate_keys:
+                        validate_keys.append(poster_url)
             else:
                 # Artwork history is unavailable. Keep existing posters but
                 # put the current cover first.
