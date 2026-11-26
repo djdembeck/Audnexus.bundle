@@ -653,6 +653,11 @@ class AudiobookAlbum(Agent.Album):
 
         if available_urls:
             if helper.artwork_ok:
+                # The first poster in the collection is the selected one.
+                # validate_keys only prunes, so drop stale entries first.
+                for stale in list(helper.metadata.posters.keys()):
+                    if stale not in available_urls:
+                        del helper.metadata.posters[stale]
                 validate_keys = available_urls
             else:
                 # Artwork history is unavailable. Keep existing posters but
