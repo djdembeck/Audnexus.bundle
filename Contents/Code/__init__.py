@@ -6,6 +6,7 @@ from _version import version
 from logging import Logging
 from region_tools import (
     APPROVED_ARTWORK_HOSTS,
+    describe_artwork_url,
     describe_url,
     get_url_origin,
     is_approved_artwork_url,
@@ -625,7 +626,7 @@ class AudiobookAlbum(Agent.Album):
                                 append_available(poster_url)
                             except Exception:
                                 log.error('Failed to refresh poster (%s)' % (
-                                    describe_url(poster_url)))
+                                    describe_artwork_url(poster_url)))
                                 set_cached_order(cached_url, index)
                                 append_available(cached_url)
                     else:
@@ -648,7 +649,7 @@ class AudiobookAlbum(Agent.Album):
                 append_available(poster_url)
             except Exception:
                 log.error('Failed to fetch poster (%s)' % (
-                    describe_url(poster_url)))
+                    describe_artwork_url(poster_url)))
 
         if available_urls:
             if helper.artwork_ok:
@@ -720,7 +721,17 @@ def make_api_request(url, api_url):
             )
             location = (get_header(response.headers, 'Location') or
                         get_header(response.headers, 'location'))
-        except Exception:
+        except Exception as err:
+            # Plex raises RedirectError instead of returning the 3xx
+            # response when follow_redirects is False. Follow its Location
+            # manually; the next loop checks the configured API origin.
+            try:
+                location = err.location
+            except (AttributeError, KeyError, TypeError):
+                location = None
+            if location:
+                url = urljoin(url, location)
+                continue
             log.error('API request failed (%s)' % describe_url(url))
             return None
         if location:
@@ -737,7 +748,7 @@ def make_artwork_request(url, api_url):
     """
     for _ in range(0, 5):
         if not is_approved_artwork_url(url, api_url):
-            log.warn('Rejected artwork URL (%s)' % describe_url(url))
+            log.warn('Rejected artwork URL (%s)' % describe_artwork_url(url))
             return None
         try:
             response = HTTP.Request(
@@ -756,21 +767,33 @@ def make_artwork_request(url, api_url):
                     status = int(status)
                 except (TypeError, ValueError):
                     status = None
-        except Exception:
-            log.error('Artwork request failed (%s)' % describe_url(url))
+        except Exception as err:
+            # Plex raises RedirectError instead of returning the 3xx
+            # response when follow_redirects is False. Follow its Location
+            # manually so every hop still passes the approved-host check.
+            try:
+                location = err.location
+            except (AttributeError, KeyError, TypeError):
+                location = None
+            if location:
+                url = urljoin(url, location)
+                continue
+            log.error('Artwork request failed (%s)' % (
+                describe_artwork_url(url)))
             return None
         if location and (status is None or 300 <= status < 400):
             url = urljoin(url, location)
             continue
         if status is not None and status >= 400:
             log.warn('Artwork request returned %s (%s)' % (
-                status, describe_url(url)))
+                status, describe_artwork_url(url)))
             return None
         if content_type and not content_type.lower().startswith('image/'):
-            log.warn('Artwork response is not an image (%s)' % describe_url(url))
+            log.warn('Artwork response is not an image (%s)' % (
+                describe_artwork_url(url)))
             return None
         return response
-    log.error('Too many artwork redirects (%s)' % describe_url(url))
+    log.error('Too many artwork redirects (%s)' % describe_artwork_url(url))
     return None
 
 

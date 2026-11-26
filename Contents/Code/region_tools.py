@@ -117,6 +117,22 @@ def describe_url(url):
     return 'invalid URL'
 
 
+def describe_artwork_url(url):
+    """
+        Returns a log-safe artwork URL: origin and path, without query or
+        fragment. The Amazon image ID lives in the path, so failures stay
+        attributable without exposing URL parameters.
+    """
+    origin = get_url_origin(url)
+    if origin is None:
+        return 'invalid URL'
+    try:
+        path = urlparse(url).path or ''
+    except (TypeError, ValueError, AttributeError):
+        path = ''
+    return '%s://%s:%s%s' % (origin[0], origin[1], origin[2], path)
+
+
 class RegionTool:
     """
         Used to generate URLs for different regions for both Audible and Audnexus.
