@@ -5,6 +5,7 @@ from region_tools import (
     get_api_url,
     is_approved_artwork_url,
 )
+import json
 import re
 import struct
 import urllib
@@ -54,32 +55,64 @@ def normalize_poster_policy(policy):
     return poster_policy_aliases.get(policy, policy)
 
 
-def store_similar_titles(metadata, names):
+def similar_storage_key(metadata, content_type):
     """
-        Remembers the similar titles this item stored, on the item, so a
-        later refresh only reconciles what this item wrote.
+        Prefs key for the similar titles an item stored. The agent id is
+        the stable per-item identity (ASIN part, region suffix ignored)
+        and the content type separates albums from artists.
     """
-    metadata.stored_similar_titles = set(names)
+    try:
+        asin = metadata.id.split('_')[0]
+    except (AttributeError, TypeError):
+        return None
+    if not asin:
+        return None
+    return 'similar_titles_' + content_type + '_' + asin
 
 
-def clear_stored_similar(metadata):
+def store_similar_titles(helper, names):
+    """
+        Remembers the similar titles this item stored in Prefs, so a
+        later refresh with a fresh metadata object can still reconcile
+        exactly what this item wrote.
+    """
+    key = similar_storage_key(helper.metadata, helper.content_type)
+    if not key:
+        return
+    helper.prefs[key] = json.dumps(list(names))
+
+
+def clear_stored_similar(helper):
     """
         Removes agent-owned similar entries this item stored previously.
-        User-added entries are kept.
+        User-added entries are kept. The key is deleted after reading it
+        so a one-time store does not leak into a later response.
     """
-    stored = getattr(metadata, 'stored_similar_titles', None)
-    if not stored:
+    key = similar_storage_key(helper.metadata, helper.content_type)
+    if not key:
         return
-    for name in list(stored):
+    try:
+        stored_raw = helper.prefs[key]
+    except (KeyError, TypeError):
+        return
+    del helper.prefs[key]
+    try:
+        stored = json.loads(stored_raw)
+    except (TypeError, ValueError):
+        return
+    if not isinstance(stored, list):
+        return
+    for name in stored:
+        if not isinstance(name, STRING_TYPES):
+            continue
         try:
-            metadata.similar.remove(name)
+            helper.metadata.similar.remove(name)
         except (AttributeError, ValueError):
             pass
         try:
-            metadata.moods.remove('Similar: ' + name)
+            helper.metadata.moods.remove('Similar: ' + name)
         except (AttributeError, ValueError):
             pass
-    metadata.stored_similar_titles = set()
 
 
 class UpdateTool:
@@ -660,7 +693,7 @@ class AlbumUpdateTool(UpdateTool):
         # Similar books. Replace only when the dedicated response was valid;
         # a failed fetch keeps the agent entries stored before.
         if self.similar_ok:
-            clear_stored_similar(self.metadata)
+            clear_stored_similar(self)
         if store_similar:
             tagger.add_similar_moods(
                 replace=self.similar_ok)
@@ -851,7 +884,7 @@ class ArtistUpdateTool(UpdateTool):
         # Similar.
         # The response was valid when compile_metadata runs, so reconcile
         # agent-owned entries even when the new list is empty.
-        clear_stored_similar(self.metadata)
+        clear_stored_similar(self)
         tagger.add_similar()
 
     def set_metadata_title(self):
@@ -973,7 +1006,7 @@ class TagTool:
                 names.append(name)
                 self.helper.metadata.moods.add('Similar: ' + name)
         if names:
-            store_similar_titles(self.helper.metadata, names)
+            store_similar_titles(self.helper, names)
 
     def clear_similar_moods(self):
         """
@@ -1013,7 +1046,7 @@ class TagTool:
         except AttributeError:
             for name in names:
                 self.helper.metadata.moods.add('Similar: ' + name)
-        store_similar_titles(self.helper.metadata, names)
+        store_similar_titles(self.helper, names)
 
     def clear_moods(self, keep_similar=False):
         """

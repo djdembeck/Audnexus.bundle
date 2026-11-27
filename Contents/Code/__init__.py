@@ -703,8 +703,15 @@ class AudiobookAlbum(Agent.Album):
                     validate_keys.append(helper.thumb)
                 # A failed replacement must not strip the cover the item
                 # was showing; keep only that single prior poster, not the
-                # whole cached collection.
+                # whole cached collection. A fallback-rendition success
+                # (thumb fetch empty, fallback fetch ok) is intentionally
+                # treated as a failed replacement here, keeping the
+                # outgoing cover one more refresh. A successful refresh
+                # re-adds the thumb to available_urls, so absence from the
+                # history window alone must not pin the stale poster past
+                # the current+10 cap.
                 if (prior_displayed_poster and
+                        helper.thumb not in available_urls and
                         prior_displayed_poster not in available_urls and
                         prior_displayed_poster in helper.metadata.posters):
                     validate_keys.append(prior_displayed_poster)
