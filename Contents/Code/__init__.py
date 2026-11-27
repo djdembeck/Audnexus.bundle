@@ -186,7 +186,7 @@ class AudiobookArtist(Agent.Artist):
 
         # Instantiate update helper
         update_helper = ArtistUpdateTool(
-            'authors', force, lang, media, metadata, Prefs)
+            'authors', force, lang, media, metadata, Prefs, Dict)
         sync_persist_flags()
 
         if not self.call_item_api(update_helper):
@@ -432,7 +432,7 @@ class AudiobookAlbum(Agent.Album):
 
         # Instantiate update helper
         update_helper = AlbumUpdateTool(
-            'books', force, lang, media, metadata, Prefs)
+            'books', force, lang, media, metadata, Prefs, Dict)
         sync_persist_flags()
 
         if not self.call_item_api(update_helper):
@@ -698,20 +698,24 @@ class AudiobookAlbum(Agent.Album):
             if helper.artwork_ok:
                 # Keep the cached fallbacks for this refresh, not every
                 # stored poster, so the poster cap holds on the next one.
+                # Captured before the cached-thumb append below; a
+                # successful thumb fetch lands in available_urls via
+                # append_available, so absence here means the current
+                # cover's replacement failed (a fallback-rendition
+                # success counts as a failure, keeping the outgoing
+                # cover one more refresh).
+                replacement_failed = helper.thumb not in available_urls
                 validate_keys = available_urls
                 if helper.thumb in helper.metadata.posters:
                     validate_keys.append(helper.thumb)
                 # A failed replacement must not strip the cover the item
-                # was showing; keep only that single prior poster, not the
-                # whole cached collection. A fallback-rendition success
-                # (thumb fetch empty, fallback fetch ok) is intentionally
-                # treated as a failed replacement here, keeping the
-                # outgoing cover one more refresh. A successful refresh
-                # re-adds the thumb to available_urls, so absence from the
-                # history window alone must not pin the stale poster past
-                # the current+10 cap.
-                if (prior_displayed_poster and
-                        helper.thumb not in available_urls and
+                # was showing; keep only that single prior poster, not
+                # the whole cached collection. A successful refresh
+                # leaves replacement_failed false, so absence from the
+                # history window alone must not pin the stale poster
+                # past the current+10 cap.
+                if (replacement_failed and
+                        prior_displayed_poster and
                         prior_displayed_poster not in available_urls and
                         prior_displayed_poster in helper.metadata.posters):
                     validate_keys.append(prior_displayed_poster)

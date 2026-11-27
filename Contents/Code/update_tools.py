@@ -57,29 +57,34 @@ def normalize_poster_policy(policy):
 
 def similar_storage_key(metadata, content_type):
     """
-        Prefs key for the similar titles an item stored. The agent id is
-        the stable per-item identity (ASIN part, region suffix ignored)
+        Dict key for the similar titles an item stored. The full
+        normalized agent id (ASIN plus region suffix) is the stable
+        per-item identity, so a regional match keeps its own record,
         and the content type separates albums from artists.
     """
     try:
-        asin = metadata.id.split('_')[0]
-    except (AttributeError, TypeError):
+        item_id = metadata.id
+    except AttributeError:
         return None
-    if not asin:
+    if not item_id:
         return None
-    return 'similar_titles_' + content_type + '_' + asin
+    return 'similar_titles_' + content_type + '_' + item_id
 
 
 def store_similar_titles(helper, names):
     """
-        Remembers the similar titles this item stored in Prefs, so a
-        later refresh with a fresh metadata object can still reconcile
-        exactly what this item wrote.
+        Remembers the similar titles this item stored in the plugin
+        Dict, so a later refresh with a fresh metadata object can
+        still reconcile exactly what this item wrote. Prefs is
+        read-only, so this bookkeeping cannot live there.
     """
     key = similar_storage_key(helper.metadata, helper.content_type)
     if not key:
         return
-    helper.prefs[key] = json.dumps(list(names))
+    try:
+        helper.plugin_dict[key] = json.dumps(list(names))
+    except (KeyError, TypeError):
+        log.warn('Failed to store similar titles for ' + key)
 
 
 def clear_stored_similar(helper):
@@ -92,10 +97,14 @@ def clear_stored_similar(helper):
     if not key:
         return
     try:
-        stored_raw = helper.prefs[key]
+        stored_raw = helper.plugin_dict[key]
     except (KeyError, TypeError):
         return
-    del helper.prefs[key]
+    try:
+        del helper.plugin_dict[key]
+    except (KeyError, TypeError):
+        log.warn('Failed to clear stored similar titles for ' + key)
+        return
     try:
         stored = json.loads(stored_raw)
     except (TypeError, ValueError):
@@ -116,13 +125,16 @@ def clear_stored_similar(helper):
 
 
 class UpdateTool:
-    def __init__(self, content_type, force, lang, media, metadata, prefs):
+    def __init__(self, content_type, force, lang, media, metadata, prefs,
+                 plugin_dict):
         self.content_type = content_type
         self.force = force
         self.lang = lang
         self.media = media
         self.metadata = metadata
         self.prefs = prefs
+        # Writable store for agent bookkeeping; Prefs is read-only.
+        self.plugin_dict = plugin_dict
         self.api_url = get_api_url(self.prefs)
         self.region = self.extract_region_from_id()
         self.tags = []
