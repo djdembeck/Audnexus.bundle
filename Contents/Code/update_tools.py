@@ -715,6 +715,11 @@ class AlbumUpdateTool(UpdateTool):
             # Clear old recommendations before adding other moods so a
             # normal tag named like one is not removed after it is added.
             tagger.clear_similar_moods()
+            # PR #136 c#4723866927: drop the ownership record on a
+            # disabled refresh; similar_ok stays false here, so the
+            # record below would never be cleared and a later fallback
+            # refresh would treat a user-added mood as agent-owned.
+            clear_stored_similar(self)
 
         # Genres.
         tagger.add_genres()

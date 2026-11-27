@@ -747,8 +747,15 @@ class AudiobookAlbum(Agent.Album):
             # The first poster in the ordered collection is the default.
             helper.metadata.posters.validate_keys(validate_keys)
             if available_urls:
-                helper.metadata.posters.sort_these_keys_first(
-                    available_urls[:1])
+                # PR #136 c#4723866934: a missing current image keeps
+                # the prior cover displayed; a failed fetch with a set
+                # thumb promotes the fallback, which is the new cover.
+                sort_first = available_urls[:1]
+                if (not helper.thumb and
+                        prior_displayed_poster and
+                        prior_displayed_poster in helper.metadata.posters):
+                    sort_first = [prior_displayed_poster]
+                helper.metadata.posters.sort_these_keys_first(sort_first)
         # Rating.
         helper.set_metadata_rating()
 
