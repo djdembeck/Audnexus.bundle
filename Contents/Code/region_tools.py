@@ -119,18 +119,22 @@ def describe_url(url):
 
 def describe_artwork_url(url):
     """
-        Returns a log-safe artwork URL: origin and path, without query or
-        fragment. The Amazon image ID lives in the path, so failures stay
-        attributable without exposing URL parameters.
+        Returns a log-safe artwork URL: the origin, plus the Amazon image ID
+        for approved Amazon hosts. Other origins log without a path so a
+        self-hosted URL with credentials in the path stays out of the logs.
     """
     origin = get_url_origin(url)
     if origin is None:
         return 'invalid URL'
-    try:
-        path = urlparse(url).path or ''
-    except (TypeError, ValueError, AttributeError):
-        path = ''
-    return '%s://%s:%s%s' % (origin[0], origin[1], origin[2], path)
+    image_id = ''
+    if origin[1] in APPROVED_ARTWORK_HOSTS:
+        try:
+            if '/images/I/' in url:
+                image_id = '/images/I/' + url.split('/images/I/', 1)[1].split(
+                    '.', 1)[0].split('/', 1)[0]
+        except (TypeError, ValueError, AttributeError):
+            image_id = ''
+    return '%s://%s:%s%s' % (origin[0], origin[1], origin[2], image_id)
 
 
 class RegionTool:

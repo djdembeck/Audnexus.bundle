@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file. See [standa
 * **prefs:** allow disabling similar-book Mood tags
 * **prefs:** disable Audnexus tag moods by default
 * **prefs:** choose the default cover art
+* **prefs:** rename the poster policy option to "Always refresh covers from upstream" (legacy values still accepted)
 
 ### [1.3.2](https://github.com/djdembeck/Audnexus.bundle/compare/v1.3.1...v1.3.2) (2024-08-12)
 

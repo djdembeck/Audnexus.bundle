@@ -36,6 +36,54 @@ def store_similar_enabled(prefs):
 MAX_HISTORY_POSTERS = 10
 MAX_SIMILAR_BOOKS = 10
 
+# Policy values for the poster update policy, after alias normalization.
+# The latest policy refreshes the available covers; the first-poster pick
+# still follows the poster order pref, so the label says refresh, not use.
+POSTER_POLICY_KEEP = 'Keep saved posters'
+POSTER_POLICY_LATEST = 'Always refresh covers from upstream'
+
+# Agent-owned similar titles from the last valid recommendation response.
+# A module-level set because both agent classes run in one process.
+STORED_SIMILAR_TITLES = set()
+
+
+def normalize_poster_policy(policy):
+    """
+        Maps legacy poster update policy values to the current ones.
+    """
+    poster_policy_aliases = {
+        'Always use latest upstream cover': POSTER_POLICY_LATEST,
+        'Always use latest/upstream cover': POSTER_POLICY_LATEST,
+        'Keep saved and do not update': POSTER_POLICY_KEEP,
+    }
+    return poster_policy_aliases.get(policy, policy)
+
+
+def store_similar_titles(names):
+    """
+        Remembers the similar titles the agent stored this update.
+    """
+    global STORED_SIMILAR_TITLES
+    STORED_SIMILAR_TITLES = set(names)
+
+
+def clear_stored_similar(metadata):
+    """
+        Removes agent-owned similar entries the agent stored previously.
+        User-added entries are kept.
+    """
+    global STORED_SIMILAR_TITLES
+    for name in list(STORED_SIMILAR_TITLES):
+        try:
+            metadata.similar.remove(name)
+        except (AttributeError, ValueError):
+            pass
+        try:
+            metadata.moods.remove('Similar: ' + name)
+        except (AttributeError, ValueError):
+            pass
+    STORED_SIMILAR_TITLES = set()
+
 
 class UpdateTool:
     def __init__(self, content_type, force, lang, media, metadata, prefs):
@@ -69,18 +117,13 @@ class UpdateTool:
         }
         self.poster_order = poster_aliases.get(
             self.poster_order, self.poster_order)
-        self.poster_update_policy = 'Keep saved posters'
+        self.poster_update_policy = POSTER_POLICY_KEEP
         try:
             self.poster_update_policy = self.prefs['poster_update_policy']
         except KeyError:
             pass
-        poster_policy_aliases = {
-            'Always use latest/upstream cover': (
-                'Always use latest upstream cover'),
-            'Keep saved and do not update': 'Keep saved posters',
-        }
-        self.poster_update_policy = poster_policy_aliases.get(
-            self.poster_update_policy, self.poster_update_policy)
+        self.poster_update_policy = normalize_poster_policy(
+            self.poster_update_policy)
         self.current_artwork_size = 0
 
     def build_url(self):
@@ -617,7 +660,10 @@ class AlbumUpdateTool(UpdateTool):
         # Tags (topics, awards, editorial, moods).
         if self.prefs['store_tags_as_moods']:
             tagger.add_tags_to_moods()
-        # Similar books. Replace only when the dedicated response was valid.
+        # Similar books. Replace only when the dedicated response was valid;
+        # a failed fetch keeps the agent entries stored before.
+        if self.similar_ok:
+            clear_stored_similar(self.metadata)
         if store_similar:
             tagger.add_similar_moods(
                 replace=self.similar_ok)
@@ -806,6 +852,9 @@ class ArtistUpdateTool(UpdateTool):
         # Genres.
         tagger.add_genres()
         # Similar.
+        # The response was valid when compile_metadata runs, so reconcile
+        # agent-owned entries even when the new list is empty.
+        clear_stored_similar(self.metadata)
         tagger.add_similar()
 
     def set_metadata_title(self):
@@ -963,6 +1012,7 @@ class TagTool:
         except AttributeError:
             for name in names:
                 self.helper.metadata.moods.add('Similar: ' + name)
+        store_similar_titles(names)
 
     def clear_moods(self, keep_similar=False):
         """

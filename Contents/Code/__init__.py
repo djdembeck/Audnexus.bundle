@@ -18,9 +18,12 @@ try:
 except ImportError:
     from urllib.parse import urlparse, urljoin
 from update_tools import (
+    POSTER_POLICY_KEEP,
+    POSTER_POLICY_LATEST,
     AlbumUpdateTool,
     ArtistUpdateTool,
     MAX_HISTORY_POSTERS,
+    normalize_poster_policy,
     store_similar_enabled,
 )
 
@@ -35,6 +38,21 @@ log = Logging()
 
 def ValidatePrefs():
     log.debug('ValidatePrefs function call')
+
+
+def sync_persist_flags():
+    """
+        Syncs the persist flags with the normalized poster update policy
+        so a pref change takes effect on the next update.
+    """
+    policy = POSTER_POLICY_KEEP
+    try:
+        policy = Prefs['poster_update_policy']
+    except KeyError:
+        pass
+    use_latest = normalize_poster_policy(policy) == POSTER_POLICY_LATEST
+    AudiobookAlbum.persist_stored_files = use_latest
+    AudiobookArtist.persist_stored_files = use_latest
 
 
 def Start():
@@ -52,14 +70,7 @@ def Start():
         ),
         log_level="info"
     )
-    policy = 'Keep saved posters'
-    try:
-        policy = Prefs['poster_update_policy']
-    except KeyError:
-        pass
-    use_latest = policy == 'Always use latest upstream cover'
-    AudiobookAlbum.persist_stored_files = use_latest
-    AudiobookArtist.persist_stored_files = use_latest
+    sync_persist_flags()
 
 
 class AudiobookArtist(Agent.Artist):
@@ -176,6 +187,7 @@ class AudiobookArtist(Agent.Artist):
         # Instantiate update helper
         update_helper = ArtistUpdateTool(
             'authors', force, lang, media, metadata, Prefs)
+        sync_persist_flags()
 
         if not self.call_item_api(update_helper):
             log.warn('Skipping metadata update: no valid Audnexus response')
@@ -264,7 +276,9 @@ class AudiobookArtist(Agent.Artist):
         helper.set_metadata_sort_title()
         # Thumb.
         # Kept here because of Proxy
-        if helper.thumb:
+        if (helper.thumb and
+                not (helper.poster_update_policy == POSTER_POLICY_KEEP and
+                     helper.thumb in helper.metadata.posters)):
             if helper.thumb not in helper.metadata.posters or helper.force:
                 helper.metadata.posters[helper.thumb] = Proxy.Media(
                     make_request(helper.thumb), sort_order=0
@@ -416,6 +430,7 @@ class AudiobookAlbum(Agent.Album):
         # Instantiate update helper
         update_helper = AlbumUpdateTool(
             'books', force, lang, media, metadata, Prefs)
+        sync_persist_flags()
 
         if not self.call_item_api(update_helper):
             log.warn('Skipping metadata update: no valid Audnexus response')
@@ -553,8 +568,10 @@ class AudiobookAlbum(Agent.Album):
         helper.set_metadata_studio()
         # Summary.
         helper.set_metadata_summary()
-        # Poster policy.
-        if helper.poster_update_policy == 'Keep saved posters':
+        # Poster policy. Skip writes only when posters exist to preserve;
+        # a fresh match still gets its upstream cover.
+        if (helper.poster_update_policy == POSTER_POLICY_KEEP and
+                helper.metadata.posters):
             helper.set_metadata_rating()
             helper.log_update_metadata()
             return
@@ -640,13 +657,13 @@ class AudiobookAlbum(Agent.Album):
                             except Exception:
                                 log.error('Failed to refresh poster (%s)' % (
                                     describe_artwork_url(poster_url)))
-                                set_cached_order(cached_url, index)
+                                set_cached_order(cached_url, index + 1)
                                 append_available(cached_url)
                     else:
-                        set_cached_order(cached_url, index)
+                        set_cached_order(cached_url, index + 1)
                         append_available(cached_url)
                 else:
-                    set_cached_order(cached_url, index)
+                    set_cached_order(cached_url, index + 1)
                     append_available(cached_url)
                 continue
             poster_url, data = fetch_poster(url, fallback)
@@ -666,12 +683,11 @@ class AudiobookAlbum(Agent.Album):
 
         if available_urls:
             if helper.artwork_ok:
-                # Keep cached posters as fallback candidates after the
-                # pref-ordered current cover.
+                # Keep the cached fallbacks for this refresh, not every
+                # stored poster, so the poster cap holds on the next one.
                 validate_keys = available_urls
-                for poster_url in helper.metadata.posters:
-                    if poster_url not in validate_keys:
-                        validate_keys.append(poster_url)
+                if helper.thumb in helper.metadata.posters:
+                    validate_keys.append(helper.thumb)
             else:
                 # Artwork history is unavailable. Keep existing posters but
                 # put the current cover first.
@@ -751,12 +767,20 @@ def make_api_request(url, api_url):
             except (AttributeError, KeyError, TypeError):
                 location = None
             if location:
-                url = urljoin(url, location)
+                try:
+                    url = urljoin(url, location)
+                except ValueError:
+                    log.error('Malformed API redirect (%s)' % describe_url(url))
+                    return None
                 continue
             log.error('API request failed (%s)' % describe_url(url))
             return None
         if location:
-            url = urljoin(url, location)
+            try:
+                url = urljoin(url, location)
+            except ValueError:
+                log.error('Malformed API redirect (%s)' % describe_url(url))
+                return None
             continue
         return response
     log.error('Too many API redirects (%s)' % describe_url(url))
@@ -797,13 +821,23 @@ def make_artwork_request(url, api_url):
             except (AttributeError, KeyError, TypeError):
                 location = None
             if location:
-                url = urljoin(url, location)
+                try:
+                    url = urljoin(url, location)
+                except ValueError:
+                    log.error('Malformed artwork redirect (%s)' % (
+                        describe_artwork_url(url)))
+                    return None
                 continue
             log.error('Artwork request failed (%s)' % (
                 describe_artwork_url(url)))
             return None
         if location and (status is None or 300 <= status < 400):
-            url = urljoin(url, location)
+            try:
+                url = urljoin(url, location)
+            except ValueError:
+                log.error('Malformed artwork redirect (%s)' % (
+                    describe_artwork_url(url)))
+                return None
             continue
         if status is not None and status >= 400:
             log.warn('Artwork request returned %s (%s)' % (

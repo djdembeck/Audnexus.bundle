@@ -52,7 +52,7 @@
         "label": "Poster updates: ",
         "type": "enum",
         "values": [
-            "Always use latest upstream cover",
+            "Always refresh covers from upstream",
             "Keep saved posters"
         ],
         "default": "Keep saved posters"
