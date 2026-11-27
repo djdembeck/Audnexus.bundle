@@ -644,6 +644,11 @@ class AudiobookAlbum(Agent.Album):
         def append_available(url):
             if url and url not in available_urls:
                 available_urls.append(url)
+        # PR #136 c#4723577963: the thumb's own fetch failed (or was
+        # not attempted) this refresh; tracked separately from cache
+        # availability so a cached thumb whose fetch fails still
+        # counts as a failed replacement.
+        thumb_fetch_failed = False
         for index, url in enumerate(poster_urls):
             fallback = helper.artwork_fallbacks.get(url)
             cached_url = None
@@ -672,16 +677,25 @@ class AudiobookAlbum(Agent.Album):
                                     describe_artwork_url(poster_url)))
                                 set_cached_order(cached_url, index + 1)
                                 append_available(cached_url)
+                                if url == helper.thumb:
+                                    thumb_fetch_failed = True
                     else:
                         set_cached_order(cached_url, index + 1)
                         append_available(cached_url)
+                        if url == helper.thumb:
+                            thumb_fetch_failed = True
                 else:
                     set_cached_order(cached_url, index + 1)
                     append_available(cached_url)
                 continue
             poster_url, data = fetch_poster(url, fallback)
             if data is None:
+                if url == helper.thumb:
+                    thumb_fetch_failed = True
                 continue
+            if url == helper.thumb and poster_url != url:
+                # The thumb's own fetch failed; the fallback rendered.
+                thumb_fetch_failed = True
             if poster_url in available_urls:
                 append_available(poster_url)
                 continue
@@ -693,18 +707,17 @@ class AudiobookAlbum(Agent.Album):
             except Exception:
                 log.error('Failed to fetch poster (%s)' % (
                     describe_artwork_url(poster_url)))
+                if url == helper.thumb:
+                    thumb_fetch_failed = True
 
         if available_urls:
             if helper.artwork_ok:
                 # Keep the cached fallbacks for this refresh, not every
                 # stored poster, so the poster cap holds on the next one.
-                # Captured before the cached-thumb append below; a
-                # successful thumb fetch lands in available_urls via
-                # append_available, so absence here means the current
-                # cover's replacement failed (a fallback-rendition
-                # success counts as a failure, keeping the outgoing
-                # cover one more refresh).
-                replacement_failed = helper.thumb not in available_urls
+                # Tracks whether the thumb's own fetch failed (or was
+                # not attempted) this refresh, so a cached thumb whose
+                # fetch fails still counts as a failed replacement.
+                replacement_failed = thumb_fetch_failed
                 validate_keys = available_urls
                 if helper.thumb in helper.metadata.posters:
                     validate_keys.append(helper.thumb)

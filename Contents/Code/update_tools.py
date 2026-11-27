@@ -73,10 +73,12 @@ def similar_storage_key(metadata, content_type):
 
 def store_similar_titles(helper, names):
     """
-        Remembers the similar titles this item stored in the plugin
-        Dict, so a later refresh with a fresh metadata object can
-        still reconcile exactly what this item wrote. Prefs is
-        read-only, so this bookkeeping cannot live there.
+        Remembers the similar titles this refresh inserted in the
+        plugin Dict, so a later refresh with a fresh metadata object
+        can still reconcile exactly what this item wrote. Only
+        agent-inserted entries are tracked, never pre-existing
+        user-added ones. Prefs is read-only, so this bookkeeping
+        cannot live there.
     """
     key = similar_storage_key(helper.metadata, helper.content_type)
     if not key:
@@ -89,9 +91,11 @@ def store_similar_titles(helper, names):
 
 def clear_stored_similar(helper):
     """
-        Removes agent-owned similar entries this item stored previously.
-        User-added entries are kept. The key is deleted after reading it
-        so a one-time store does not leak into a later response.
+        Removes the similar entries this item stored previously, which
+        are only the ones an earlier refresh inserted. User-added
+        entries were never stored and are kept. The key is deleted
+        after reading it so a one-time store does not leak into a
+        later response.
     """
     key = similar_storage_key(helper.metadata, helper.content_type)
     if not key:
@@ -1005,6 +1009,11 @@ class TagTool:
                 self.helper.metadata.moods.add(mood)
         if not self.helper.similar:
             return
+        pre_existing = []
+        for mood in list(self.helper.metadata.moods):
+            if (isinstance(mood, STRING_TYPES) and
+                    mood.startswith('Similar: ')):
+                pre_existing.append(mood[len('Similar: '):])
         names = []
         for item in self.helper.similar:
             if isinstance(item, dict):
@@ -1018,7 +1027,14 @@ class TagTool:
                 names.append(name)
                 self.helper.metadata.moods.add('Similar: ' + name)
         if names:
-            store_similar_titles(self.helper, names)
+            # PR #136 c#4723577969: store only the entries this refresh
+            # inserted, so clear_stored_similar cannot remove
+            # pre-existing user entries.
+            stored = []
+            for name in names:
+                if name not in pre_existing:
+                    stored.append(name)
+            store_similar_titles(self.helper, stored)
 
     def clear_similar_moods(self):
         """
@@ -1052,13 +1068,28 @@ class TagTool:
                     names.append(name)
         if not names:
             return
+        pre_existing = []
+        try:
+            pre_existing = list(self.helper.metadata.similar)
+        except AttributeError:
+            for mood in list(self.helper.metadata.moods):
+                if (isinstance(mood, STRING_TYPES) and
+                        mood.startswith('Similar: ')):
+                    pre_existing.append(mood[len('Similar: '):])
         try:
             for name in names:
                 self.helper.metadata.similar.add(name)
         except AttributeError:
             for name in names:
                 self.helper.metadata.moods.add('Similar: ' + name)
-        store_similar_titles(self.helper, names)
+        # PR #136 c#4723577969: store only the entries this refresh
+        # inserted, so clear_stored_similar cannot remove pre-existing
+        # user entries.
+        stored = []
+        for name in names:
+            if name not in pre_existing:
+                stored.append(name)
+        store_similar_titles(self.helper, stored)
 
     def clear_moods(self, keep_similar=False):
         """
