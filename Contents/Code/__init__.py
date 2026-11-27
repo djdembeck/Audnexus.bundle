@@ -648,7 +648,10 @@ class AudiobookAlbum(Agent.Album):
         # not attempted) this refresh; tracked separately from cache
         # availability so a cached thumb whose fetch fails still
         # counts as a failed replacement.
-        thumb_fetch_failed = False
+        # PR #136 c#4723752657: a missing current image (empty thumb)
+        # also counts as a failed replacement, so the prior displayed
+        # poster is retained.
+        thumb_fetch_failed = not helper.thumb
         for index, url in enumerate(poster_urls):
             fallback = helper.artwork_fallbacks.get(url)
             cached_url = None

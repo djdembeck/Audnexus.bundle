@@ -71,18 +71,40 @@ def similar_storage_key(metadata, content_type):
     return 'similar_titles_' + content_type + '_' + item_id
 
 
-def store_similar_titles(helper, names):
+def store_similar_titles(helper, names, merge=False):
     """
         Remembers the similar titles this refresh inserted in the
         plugin Dict, so a later refresh with a fresh metadata object
         can still reconcile exactly what this item wrote. Only
         agent-inserted entries are tracked, never pre-existing
         user-added ones. Prefs is read-only, so this bookkeeping
-        cannot live there.
+        cannot live there. With merge=True the new names are unioned
+        into the existing record (existing order kept, no
+        duplicates) instead of replacing it, for fallback refreshes
+        that skip the prior clear.
     """
     key = similar_storage_key(helper.metadata, helper.content_type)
     if not key:
         return
+    if merge:
+        try:
+            existing_raw = helper.plugin_dict[key]
+        except (KeyError, TypeError):
+            existing_raw = None
+        if existing_raw:
+            try:
+                existing = json.loads(existing_raw)
+            except (TypeError, ValueError):
+                existing = None
+            if isinstance(existing, list):
+                merged = []
+                for name in existing:
+                    if isinstance(name, STRING_TYPES) and name not in merged:
+                        merged.append(name)
+                for name in names:
+                    if name not in merged:
+                        merged.append(name)
+                names = merged
     try:
         helper.plugin_dict[key] = json.dumps(list(names))
     except (KeyError, TypeError):
@@ -706,8 +728,10 @@ class AlbumUpdateTool(UpdateTool):
         # Tags (topics, awards, editorial, moods).
         if self.prefs['store_tags_as_moods']:
             tagger.add_tags_to_moods()
-        # Similar books. Replace only when the dedicated response was valid;
-        # a failed fetch keeps the agent entries stored before.
+        # Similar books. Replace only when the dedicated response was
+        # valid; a failed fetch keeps the agent entries stored before.
+        # The clear removes only agent-owned entries via the stored
+        # record, so user-added Similar: moods survive the refresh.
         if self.similar_ok:
             clear_stored_similar(self)
         if store_similar:
@@ -995,18 +1019,12 @@ class TagTool:
 
     def add_similar_moods(self, replace=False):
         """
-            Adds similar books as agent-owned Similar: moods.
+            Adds similar books as agent-owned Similar: moods. With
+            replace=True the agent-owned entries were already removed
+            by clear_stored_similar before this call, so the
+            replacement is just these additions; user-added Similar:
+            moods are left in place.
         """
-        if replace:
-            keep = []
-            for mood in list(self.helper.metadata.moods):
-                if (isinstance(mood, STRING_TYPES) and
-                        mood.startswith('Similar: ')):
-                    continue
-                keep.append(mood)
-            self.helper.metadata.moods.clear()
-            for mood in keep:
-                self.helper.metadata.moods.add(mood)
         if not self.helper.similar:
             return
         pre_existing = []
@@ -1034,7 +1052,10 @@ class TagTool:
             for name in names:
                 if name not in pre_existing:
                     stored.append(name)
-            store_similar_titles(self.helper, stored)
+            # PR #136 c#4723752651: a fallback refresh (replace False)
+            # skips the prior clear, so merge into the existing record
+            # instead of overwriting it to an empty list.
+            store_similar_titles(self.helper, stored, merge=not replace)
 
     def clear_similar_moods(self):
         """
