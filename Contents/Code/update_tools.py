@@ -42,11 +42,6 @@ MAX_SIMILAR_BOOKS = 10
 POSTER_POLICY_KEEP = 'Keep saved posters'
 POSTER_POLICY_LATEST = 'Always refresh covers from upstream'
 
-# Agent-owned similar titles from the last valid recommendation response.
-# A module-level set because both agent classes run in one process.
-STORED_SIMILAR_TITLES = set()
-
-
 def normalize_poster_policy(policy):
     """
         Maps legacy poster update policy values to the current ones.
@@ -59,21 +54,23 @@ def normalize_poster_policy(policy):
     return poster_policy_aliases.get(policy, policy)
 
 
-def store_similar_titles(names):
+def store_similar_titles(metadata, names):
     """
-        Remembers the similar titles the agent stored this update.
+        Remembers the similar titles this item stored, on the item, so a
+        later refresh only reconciles what this item wrote.
     """
-    global STORED_SIMILAR_TITLES
-    STORED_SIMILAR_TITLES = set(names)
+    metadata.stored_similar_titles = set(names)
 
 
 def clear_stored_similar(metadata):
     """
-        Removes agent-owned similar entries the agent stored previously.
+        Removes agent-owned similar entries this item stored previously.
         User-added entries are kept.
     """
-    global STORED_SIMILAR_TITLES
-    for name in list(STORED_SIMILAR_TITLES):
+    stored = getattr(metadata, 'stored_similar_titles', None)
+    if not stored:
+        return
+    for name in list(stored):
         try:
             metadata.similar.remove(name)
         except (AttributeError, ValueError):
@@ -82,7 +79,7 @@ def clear_stored_similar(metadata):
             metadata.moods.remove('Similar: ' + name)
         except (AttributeError, ValueError):
             pass
-    STORED_SIMILAR_TITLES = set()
+    metadata.stored_similar_titles = set()
 
 
 class UpdateTool:
@@ -963,6 +960,7 @@ class TagTool:
                 self.helper.metadata.moods.add(mood)
         if not self.helper.similar:
             return
+        names = []
         for item in self.helper.similar:
             if isinstance(item, dict):
                 name = item.get('name')
@@ -972,7 +970,10 @@ class TagTool:
                 continue
             name = name.strip()
             if name:
+                names.append(name)
                 self.helper.metadata.moods.add('Similar: ' + name)
+        if names:
+            store_similar_titles(self.helper.metadata, names)
 
     def clear_similar_moods(self):
         """
@@ -1012,7 +1013,7 @@ class TagTool:
         except AttributeError:
             for name in names:
                 self.helper.metadata.moods.add('Similar: ' + name)
-        store_similar_titles(names)
+        store_similar_titles(self.helper.metadata, names)
 
     def clear_moods(self, keep_similar=False):
         """

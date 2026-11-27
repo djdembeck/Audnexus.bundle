@@ -276,9 +276,12 @@ class AudiobookArtist(Agent.Artist):
         helper.set_metadata_sort_title()
         # Thumb.
         # Kept here because of Proxy
+        # KEEP skips a write once any poster exists, matching the album
+        # path; checking only the incoming URL would let an upstream URL
+        # change slip a new image in at sort_order=0.
         if (helper.thumb and
                 not (helper.poster_update_policy == POSTER_POLICY_KEEP and
-                     helper.thumb in helper.metadata.posters)):
+                     helper.metadata.posters)):
             if helper.thumb not in helper.metadata.posters or helper.force:
                 helper.metadata.posters[helper.thumb] = Proxy.Media(
                     make_request(helper.thumb), sort_order=0
@@ -619,6 +622,16 @@ class AudiobookAlbum(Agent.Album):
             return None, None
 
         available_urls = []
+        # The cover displayed before this refresh; if its replacement
+        # fails, it is the one key kept so the item does not lose its
+        # only cover.
+        prior_displayed_poster = None
+        if helper.metadata.posters:
+            try:
+                prior_displayed_poster = list(
+                    helper.metadata.posters.keys())[0]
+            except Exception:
+                prior_displayed_poster = None
 
         def set_cached_order(url, order):
             if url in available_urls:
@@ -688,6 +701,13 @@ class AudiobookAlbum(Agent.Album):
                 validate_keys = available_urls
                 if helper.thumb in helper.metadata.posters:
                     validate_keys.append(helper.thumb)
+                # A failed replacement must not strip the cover the item
+                # was showing; keep only that single prior poster, not the
+                # whole cached collection.
+                if (prior_displayed_poster and
+                        prior_displayed_poster not in available_urls and
+                        prior_displayed_poster in helper.metadata.posters):
+                    validate_keys.append(prior_displayed_poster)
             else:
                 # Artwork history is unavailable. Keep existing posters but
                 # put the current cover first.

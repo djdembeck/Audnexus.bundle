@@ -129,8 +129,11 @@ def describe_artwork_url(url):
     image_id = ''
     if origin[1] in APPROVED_ARTWORK_HOSTS:
         try:
-            if '/images/I/' in url:
-                image_id = '/images/I/' + url.split('/images/I/', 1)[1].split(
+            # Split the path only so a query or fragment containing
+            # /images/I/ does not leak into the log.
+            path = urlparse(url).path
+            if '/images/I/' in path:
+                image_id = '/images/I/' + path.split('/images/I/', 1)[1].split(
                     '.', 1)[0].split('/', 1)[0]
         except (TypeError, ValueError, AttributeError):
             image_id = ''
