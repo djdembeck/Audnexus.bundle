@@ -4,9 +4,28 @@ import json
 # Import internal tools
 from _version import version
 from logging import Logging
+from region_tools import (
+    APPROVED_ARTWORK_HOSTS,
+    describe_artwork_url,
+    describe_url,
+    get_url_origin,
+    is_approved_artwork_url,
+)
 from search_tools import AlbumSearchTool, ArtistSearchTool, ScoreTool
 from time import sleep
-from update_tools import AlbumUpdateTool, ArtistUpdateTool
+try:
+    from urlparse import urlparse, urljoin
+except ImportError:
+    from urllib.parse import urlparse, urljoin
+from update_tools import (
+    POSTER_POLICY_KEEP,
+    POSTER_POLICY_LATEST,
+    AlbumUpdateTool,
+    ArtistUpdateTool,
+    MAX_HISTORY_POSTERS,
+    normalize_poster_policy,
+    store_similar_enabled,
+)
 
 VERSION_NO = version
 
@@ -19,6 +38,21 @@ log = Logging()
 
 def ValidatePrefs():
     log.debug('ValidatePrefs function call')
+
+
+def sync_persist_flags():
+    """
+        Syncs the persist flags with the normalized poster update policy
+        so a pref change takes effect on the next update.
+    """
+    policy = POSTER_POLICY_KEEP
+    try:
+        policy = Prefs['poster_update_policy']
+    except KeyError:
+        pass
+    use_latest = normalize_poster_policy(policy) == POSTER_POLICY_LATEST
+    AudiobookAlbum.persist_stored_files = use_latest
+    AudiobookArtist.persist_stored_files = use_latest
 
 
 def Start():
@@ -36,6 +70,7 @@ def Start():
         ),
         log_level="info"
     )
+    sync_persist_flags()
 
 
 class AudiobookArtist(Agent.Artist):
@@ -151,9 +186,12 @@ class AudiobookArtist(Agent.Artist):
 
         # Instantiate update helper
         update_helper = ArtistUpdateTool(
-            'authors', force, lang, media, metadata, Prefs)
+            'authors', force, lang, media, metadata, Prefs, Dict)
+        sync_persist_flags()
 
-        self.call_item_api(update_helper)
+        if not self.call_item_api(update_helper):
+            log.warn('Skipping metadata update: no valid Audnexus response')
+            return
 
         self.compile_metadata(update_helper)
 
@@ -163,8 +201,10 @@ class AudiobookArtist(Agent.Artist):
         """
         query = helper.build_search_args()
         search_url = helper.build_url(query)
-        request = str(make_request(search_url))
-        response = json_decode(request)
+        request = make_api_request(search_url, helper.api_url)
+        if request is None:
+            return []
+        response = json_decode(str(request))
         # When using asin match, put it into array
         if isinstance(response, list):
             arr_to_pass = response
@@ -205,9 +245,22 @@ class AudiobookArtist(Agent.Artist):
             then calls helper to parse those details.
         """
         update_url = helper.build_url()
-        request = str(make_request(update_url))
-        response = json_decode(request)
+        request = make_api_request(update_url, helper.api_url)
+        if request is None:
+            log.error('No response from Audnexus (%s)' % describe_url(update_url))
+            return False
+        try:
+            response = json_decode(str(request))
+        except Exception:
+            log.error('Invalid Audnexus response (%s)' % (
+                describe_url(update_url)))
+            return False
+        if (not isinstance(response, dict) or
+                'error' in response or 'asin' not in response):
+            log.error('Invalid Audnexus response (%s)' % describe_url(update_url))
+            return False
         helper.parse_api_response(response)
+        return True
 
     def compile_metadata(self, helper):
         """
@@ -223,7 +276,12 @@ class AudiobookArtist(Agent.Artist):
         helper.set_metadata_sort_title()
         # Thumb.
         # Kept here because of Proxy
-        if helper.thumb:
+        # KEEP skips a write once any poster exists, matching the album
+        # path; checking only the incoming URL would let an upstream URL
+        # change slip a new image in at sort_order=0.
+        if (helper.thumb and
+                not (helper.poster_update_policy == POSTER_POLICY_KEEP and
+                     helper.metadata.posters)):
             if helper.thumb not in helper.metadata.posters or helper.force:
                 helper.metadata.posters[helper.thumb] = Proxy.Media(
                     make_request(helper.thumb), sort_order=0
@@ -374,9 +432,12 @@ class AudiobookAlbum(Agent.Album):
 
         # Instantiate update helper
         update_helper = AlbumUpdateTool(
-            'books', force, lang, media, metadata, Prefs)
+            'books', force, lang, media, metadata, Prefs, Dict)
+        sync_persist_flags()
 
-        self.call_item_api(update_helper)
+        if not self.call_item_api(update_helper):
+            log.warn('Skipping metadata update: no valid Audnexus response')
+            return
 
         self.compile_metadata(update_helper)
 
@@ -433,12 +494,66 @@ class AudiobookAlbum(Agent.Album):
             then calls helper to parse those details.
         """
         update_url = helper.build_url()
-        request = str(make_request(update_url))
-        response = json_decode(request)
+        request = make_api_request(update_url, helper.api_url)
+        if request is None:
+            log.error('No response from Audnexus (%s)' % describe_url(update_url))
+            return False
+        try:
+            response = json_decode(str(request))
+        except Exception:
+            log.error('Invalid Audnexus response (%s)' % (
+                describe_url(update_url)))
+            return False
+        if (not isinstance(response, dict) or
+                'error' in response or 'asin' not in response):
+            log.error('Invalid Audnexus response (%s)' % describe_url(update_url))
+            return False
         helper.parse_api_response(response)
+        self.fetch_artwork(helper)
+        if store_similar_enabled(helper.prefs):
+            self.fetch_similar(helper)
 
         # Set date to date object
         helper.date = self.getDateFromString(helper.date)
+        return True
+
+    def fetch_artwork(self, helper):
+        """
+            Fetches retained artwork for the Plex poster picker.
+        """
+        artwork_url = helper.build_artwork_url()
+        if not artwork_url:
+            return
+        try:
+            response = make_api_request(artwork_url, helper.api_url)
+            if response is None:
+                helper.artwork_ok = False
+                helper.artwork_urls = []
+                helper.artwork_fallbacks = {}
+                return
+            helper.parse_artwork_response(json_decode(str(response)))
+        except Exception:
+            helper.artwork_ok = False
+            helper.artwork_urls = []
+            helper.artwork_fallbacks = {}
+            log.error('Failed to fetch artwork history (%s)' % (
+                describe_url(artwork_url)))
+
+    def fetch_similar(self, helper):
+        """
+            Fetches similar books from the dedicated endpoint.
+        """
+        similar_url = helper.build_similar_url()
+        if not similar_url:
+            return
+        try:
+            response = make_api_request(similar_url, helper.api_url)
+            if response is None:
+                return
+            helper.parse_similar_response(json_decode(str(response)))
+        except Exception:
+            log.error('Failed to fetch similar books (%s)' % (
+                describe_url(similar_url)))
 
     def compile_metadata(self, helper):
         """
@@ -456,15 +571,191 @@ class AudiobookAlbum(Agent.Album):
         helper.set_metadata_studio()
         # Summary.
         helper.set_metadata_summary()
+        # Poster policy. Skip writes only when posters exist to preserve;
+        # a fresh match still gets its upstream cover.
+        if (helper.poster_update_policy == POSTER_POLICY_KEEP and
+                helper.metadata.posters):
+            helper.set_metadata_rating()
+            helper.log_update_metadata()
+            return
         # Thumb.
         # Kept here because of Proxy
-        if helper.thumb:
-            if helper.thumb not in helper.metadata.posters or helper.force:
-                helper.metadata.posters[helper.thumb] = Proxy.Media(
-                    make_request(helper.thumb), sort_order=0
+        poster_urls = []
+        history_urls = [url for url in helper.artwork_urls if url]
+        if helper.poster_order == 'Oldest historical cover':
+            history_urls.reverse()
+            history_urls = history_urls[:MAX_HISTORY_POSTERS]
+            poster_urls.extend(history_urls)
+            if helper.thumb:
+                poster_urls.append(helper.thumb)
+        elif helper.poster_order == 'Largest resolution cover':
+            history_urls.sort(
+                key=lambda url: helper.artwork_sizes.get(url, 0),
+                reverse=True
+            )
+            history_urls = history_urls[:MAX_HISTORY_POSTERS]
+            ranked = []
+            for url in history_urls:
+                ranked.append((helper.artwork_sizes.get(url, 0), url))
+            if helper.thumb:
+                ranked.append((helper.current_artwork_size, helper.thumb))
+            ranked.sort(key=lambda item: item[0], reverse=True)
+            poster_urls = [url for size, url in ranked]
+        else:
+            if helper.thumb:
+                poster_urls.append(helper.thumb)
+            poster_urls.extend(history_urls[:MAX_HISTORY_POSTERS])
+        unique_urls = []
+        for url in poster_urls:
+            if url and url not in unique_urls:
+                unique_urls.append(url)
+        poster_urls = unique_urls
+
+        def fetch_poster(url, fallback, skip_fallback=False):
+            data = make_artwork_request(url, helper.api_url)
+            if data is not None:
+                return url, data
+            if fallback and not skip_fallback:
+                data = make_artwork_request(fallback, helper.api_url)
+                if data is not None:
+                    return fallback, data
+            return None, None
+
+        available_urls = []
+        # The cover displayed before this refresh; if its replacement
+        # fails, it is the one key kept so the item does not lose its
+        # only cover.
+        prior_displayed_poster = None
+        if helper.metadata.posters:
+            try:
+                prior_displayed_poster = list(
+                    helper.metadata.posters.keys())[0]
+            except Exception:
+                prior_displayed_poster = None
+
+        def set_cached_order(url, order):
+            if url in available_urls:
+                return
+            try:
+                helper.metadata.posters[url].sort_order = order
+            except Exception:
+                pass
+
+        def append_available(url):
+            if url and url not in available_urls:
+                available_urls.append(url)
+        # PR #136 c#4723577963: the thumb's own fetch failed (or was
+        # not attempted) this refresh; tracked separately from cache
+        # availability so a cached thumb whose fetch fails still
+        # counts as a failed replacement.
+        # PR #136 c#4723752657: a missing current image (empty thumb)
+        # also counts as a failed replacement, so the prior displayed
+        # poster is retained.
+        thumb_fetch_failed = not helper.thumb
+        for index, url in enumerate(poster_urls):
+            fallback = helper.artwork_fallbacks.get(url)
+            cached_url = None
+            if url in helper.metadata.posters:
+                cached_url = url
+            elif fallback and fallback in helper.metadata.posters:
+                cached_url = fallback
+            if cached_url:
+                retry = helper.force or index == 0 or cached_url != url
+                if retry:
+                    poster_url, data = fetch_poster(
+                        url, fallback,
+                        skip_fallback=(cached_url == fallback and
+                                        not helper.force))
+                    if data is not None:
+                        if poster_url in available_urls:
+                            append_available(poster_url)
+                        else:
+                            try:
+                                helper.metadata.posters[poster_url] = Proxy.Media(
+                                    data, sort_order=index + 1
+                                )
+                                append_available(poster_url)
+                            except Exception:
+                                log.error('Failed to refresh poster (%s)' % (
+                                    describe_artwork_url(poster_url)))
+                                set_cached_order(cached_url, index + 1)
+                                append_available(cached_url)
+                                if url == helper.thumb:
+                                    thumb_fetch_failed = True
+                    else:
+                        set_cached_order(cached_url, index + 1)
+                        append_available(cached_url)
+                        if url == helper.thumb:
+                            thumb_fetch_failed = True
+                else:
+                    set_cached_order(cached_url, index + 1)
+                    append_available(cached_url)
+                continue
+            poster_url, data = fetch_poster(url, fallback)
+            if data is None:
+                if url == helper.thumb:
+                    thumb_fetch_failed = True
+                continue
+            if url == helper.thumb and poster_url != url:
+                # The thumb's own fetch failed; the fallback rendered.
+                thumb_fetch_failed = True
+            if poster_url in available_urls:
+                append_available(poster_url)
+                continue
+            try:
+                helper.metadata.posters[poster_url] = Proxy.Media(
+                    data, sort_order=index + 1
                 )
-                # Re-prioritize the poster to the first position
-                helper.metadata.posters.validate_keys([helper.thumb])
+                append_available(poster_url)
+            except Exception:
+                log.error('Failed to fetch poster (%s)' % (
+                    describe_artwork_url(poster_url)))
+                if url == helper.thumb:
+                    thumb_fetch_failed = True
+
+        if available_urls:
+            if helper.artwork_ok:
+                # Keep the cached fallbacks for this refresh, not every
+                # stored poster, so the poster cap holds on the next one.
+                # Tracks whether the thumb's own fetch failed (or was
+                # not attempted) this refresh, so a cached thumb whose
+                # fetch fails still counts as a failed replacement.
+                replacement_failed = thumb_fetch_failed
+                validate_keys = available_urls
+                if helper.thumb in helper.metadata.posters:
+                    validate_keys.append(helper.thumb)
+                # A failed replacement must not strip the cover the item
+                # was showing; keep only that single prior poster, not
+                # the whole cached collection. A successful refresh
+                # leaves replacement_failed false, so absence from the
+                # history window alone must not pin the stale poster
+                # past the current+10 cap.
+                if (replacement_failed and
+                        prior_displayed_poster and
+                        prior_displayed_poster not in available_urls and
+                        prior_displayed_poster in helper.metadata.posters):
+                    validate_keys.append(prior_displayed_poster)
+            else:
+                # Artwork history is unavailable. Keep existing posters but
+                # put the current cover first.
+                validate_keys = []
+                if helper.thumb in helper.metadata.posters:
+                    validate_keys.append(helper.thumb)
+                for poster_url in helper.metadata.posters:
+                    if poster_url not in validate_keys:
+                        validate_keys.append(poster_url)
+            # The first poster in the ordered collection is the default.
+            helper.metadata.posters.validate_keys(validate_keys)
+            if available_urls:
+                # PR #136 c#4723866934: a missing current image keeps
+                # the prior cover displayed; a failed fetch with a set
+                # thumb promotes the fallback, which is the new cover.
+                sort_first = available_urls[:1]
+                if (not helper.thumb and
+                        prior_displayed_poster and
+                        prior_displayed_poster in helper.metadata.posters):
+                    sort_first = [prior_displayed_poster]
+                helper.metadata.posters.sort_these_keys_first(sort_first)
         # Rating.
         helper.set_metadata_rating()
 
@@ -493,6 +784,126 @@ def json_decode(output):
         return json.loads(output, encoding="utf-8")
     except AttributeError:
         return None
+
+
+def get_header(headers, name):
+    """
+        Reads a header without assuming dict.get is available.
+    """
+    try:
+        return headers[name]
+    except (KeyError, TypeError, AttributeError):
+        return None
+
+
+def make_api_request(url, api_url):
+    """
+        Fetches an Audnexus API URL, following redirects only within the
+        configured API origin.
+    """
+    api_origin = get_url_origin(api_url)
+    for _ in range(0, 5):
+        if api_origin is None or get_url_origin(url) != api_origin:
+            log.warn('Rejected API URL (%s)' % describe_url(url))
+            return None
+        try:
+            response = HTTP.Request(
+                url, timeout=90, sleep=1, follow_redirects=False
+            )
+            location = (get_header(response.headers, 'Location') or
+                        get_header(response.headers, 'location'))
+        except Exception as err:
+            # Plex raises RedirectError instead of returning the 3xx
+            # response when follow_redirects is False. Follow its Location
+            # manually; the next loop checks the configured API origin.
+            try:
+                location = err.location
+            except (AttributeError, KeyError, TypeError):
+                location = None
+            if location:
+                try:
+                    url = urljoin(url, location)
+                except ValueError:
+                    log.error('Malformed API redirect (%s)' % describe_url(url))
+                    return None
+                continue
+            log.error('API request failed (%s)' % describe_url(url))
+            return None
+        if location:
+            try:
+                url = urljoin(url, location)
+            except ValueError:
+                log.error('Malformed API redirect (%s)' % describe_url(url))
+                return None
+            continue
+        return response
+    log.error('Too many API redirects (%s)' % describe_url(url))
+    return None
+
+
+def make_artwork_request(url, api_url):
+    """
+        Fetches an approved artwork URL and validates each redirect.
+    """
+    for _ in range(0, 5):
+        if not is_approved_artwork_url(url, api_url):
+            log.warn('Rejected artwork URL (%s)' % describe_artwork_url(url))
+            return None
+        try:
+            response = HTTP.Request(
+                url, timeout=90, sleep=1, follow_redirects=False
+            )
+            location = (get_header(response.headers, 'Location') or
+                        get_header(response.headers, 'location'))
+            content_type = (get_header(response.headers, 'Content-Type') or
+                            get_header(response.headers, 'content-type') or '')
+            try:
+                status = response.status
+            except AttributeError:
+                status = None
+            if status is not None:
+                try:
+                    status = int(status)
+                except (TypeError, ValueError):
+                    status = None
+        except Exception as err:
+            # Plex raises RedirectError instead of returning the 3xx
+            # response when follow_redirects is False. Follow its Location
+            # manually so every hop still passes the approved-host check.
+            try:
+                location = err.location
+            except (AttributeError, KeyError, TypeError):
+                location = None
+            if location:
+                try:
+                    url = urljoin(url, location)
+                except ValueError:
+                    log.error('Malformed artwork redirect (%s)' % (
+                        describe_artwork_url(url)))
+                    return None
+                continue
+            log.error('Artwork request failed (%s)' % (
+                describe_artwork_url(url)))
+            return None
+        if location and (status is None or 300 <= status < 400):
+            try:
+                url = urljoin(url, location)
+            except ValueError:
+                log.error('Malformed artwork redirect (%s)' % (
+                    describe_artwork_url(url)))
+                return None
+            continue
+        if status is not None and status >= 400:
+            log.warn('Artwork request returned %s (%s)' % (
+                status, describe_artwork_url(url)))
+            return None
+        if content_type and not content_type.lower().startswith('image/'):
+            log.warn('Artwork response is not an image (%s)' % (
+                describe_artwork_url(url)))
+            return None
+        return response
+    log.error('Too many artwork redirects (%s)' % describe_artwork_url(url))
+    return None
 
 
 def make_request(url):

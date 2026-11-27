@@ -1,24 +1,198 @@
 # Import internal tools
 from logging import Logging
-from region_tools import RegionTool
+from region_tools import (
+    RegionTool,
+    get_api_url,
+    is_approved_artwork_url,
+)
+import json
 import re
 import struct
 import urllib
 import os
+try:
+    from urlparse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
 
 # Setup logger
 log = Logging()
 
+try:
+    STRING_TYPES = (basestring,)
+except NameError:
+    STRING_TYPES = (str,)
+
+
+def store_similar_enabled(prefs):
+    """
+        Returns whether similar-book moods are enabled.
+    """
+    try:
+        return prefs['store_similar_as_moods']
+    except (KeyError, TypeError):
+        return False
+
+# Keep the poster picker useful instead of mirroring the entire history.
+MAX_HISTORY_POSTERS = 10
+MAX_SIMILAR_BOOKS = 10
+
+# Policy values for the poster update policy, after alias normalization.
+# The latest policy refreshes the available covers; the first-poster pick
+# still follows the poster order pref, so the label says refresh, not use.
+POSTER_POLICY_KEEP = 'Keep saved posters'
+POSTER_POLICY_LATEST = 'Always refresh covers from upstream'
+
+def normalize_poster_policy(policy):
+    """
+        Maps legacy poster update policy values to the current ones.
+    """
+    poster_policy_aliases = {
+        'Always use latest upstream cover': POSTER_POLICY_LATEST,
+        'Always use latest/upstream cover': POSTER_POLICY_LATEST,
+        'Keep saved and do not update': POSTER_POLICY_KEEP,
+    }
+    return poster_policy_aliases.get(policy, policy)
+
+
+def similar_storage_key(metadata, content_type):
+    """
+        Dict key for the similar titles an item stored. The full
+        normalized agent id (ASIN plus region suffix) is the stable
+        per-item identity, so a regional match keeps its own record,
+        and the content type separates albums from artists.
+    """
+    try:
+        item_id = metadata.id
+    except AttributeError:
+        return None
+    if not item_id:
+        return None
+    return 'similar_titles_' + content_type + '_' + item_id
+
+
+def store_similar_titles(helper, names, merge=False):
+    """
+        Remembers the similar titles this refresh inserted in the
+        plugin Dict, so a later refresh with a fresh metadata object
+        can still reconcile exactly what this item wrote. Only
+        agent-inserted entries are tracked, never pre-existing
+        user-added ones. Prefs is read-only, so this bookkeeping
+        cannot live there. With merge=True the new names are unioned
+        into the existing record (existing order kept, no
+        duplicates) instead of replacing it, for fallback refreshes
+        that skip the prior clear.
+    """
+    key = similar_storage_key(helper.metadata, helper.content_type)
+    if not key:
+        return
+    if merge:
+        try:
+            existing_raw = helper.plugin_dict[key]
+        except (KeyError, TypeError):
+            existing_raw = None
+        if existing_raw:
+            try:
+                existing = json.loads(existing_raw)
+            except (TypeError, ValueError):
+                existing = None
+            if isinstance(existing, list):
+                merged = []
+                for name in existing:
+                    if isinstance(name, STRING_TYPES) and name not in merged:
+                        merged.append(name)
+                for name in names:
+                    if name not in merged:
+                        merged.append(name)
+                names = merged
+    try:
+        helper.plugin_dict[key] = json.dumps(list(names))
+    except (KeyError, TypeError):
+        log.warn('Failed to store similar titles for ' + key)
+
+
+def clear_stored_similar(helper):
+    """
+        Removes the similar entries this item stored previously, which
+        are only the ones an earlier refresh inserted. User-added
+        entries were never stored and are kept. The key is deleted
+        after reading it so a one-time store does not leak into a
+        later response.
+    """
+    key = similar_storage_key(helper.metadata, helper.content_type)
+    if not key:
+        return
+    try:
+        stored_raw = helper.plugin_dict[key]
+    except (KeyError, TypeError):
+        return
+    try:
+        del helper.plugin_dict[key]
+    except (KeyError, TypeError):
+        log.warn('Failed to clear stored similar titles for ' + key)
+        return
+    try:
+        stored = json.loads(stored_raw)
+    except (TypeError, ValueError):
+        return
+    if not isinstance(stored, list):
+        return
+    for name in stored:
+        if not isinstance(name, STRING_TYPES):
+            continue
+        try:
+            helper.metadata.similar.remove(name)
+        except (AttributeError, ValueError):
+            pass
+        try:
+            helper.metadata.moods.remove('Similar: ' + name)
+        except (AttributeError, ValueError):
+            pass
+
 
 class UpdateTool:
-    def __init__(self, content_type, force, lang, media, metadata, prefs):
+    def __init__(self, content_type, force, lang, media, metadata, prefs,
+                 plugin_dict):
         self.content_type = content_type
         self.force = force
         self.lang = lang
         self.media = media
         self.metadata = metadata
         self.prefs = prefs
+        # Writable store for agent bookkeeping; Prefs is read-only.
+        self.plugin_dict = plugin_dict
+        self.api_url = get_api_url(self.prefs)
         self.region = self.extract_region_from_id()
+        self.tags = []
+        self.similar = []
+        self.similar_ok = False
+        self.artwork_urls = []
+        self.artwork_fallbacks = {}
+        self.artwork_sizes = {}
+        self.artwork_ok = False
+        self.poster_order = 'Most recent cover'
+        try:
+            self.poster_order = self.prefs['poster_order']
+        except KeyError:
+            pass
+        poster_aliases = {
+            'Most recent first': 'Most recent cover',
+            'Most recent cover first': 'Most recent cover',
+            'Oldest first': 'Oldest historical cover',
+            'Oldest cover first': 'Oldest historical cover',
+            'Largest first': 'Largest resolution cover',
+            'Largest resolution first': 'Largest resolution cover',
+        }
+        self.poster_order = poster_aliases.get(
+            self.poster_order, self.poster_order)
+        self.poster_update_policy = POSTER_POLICY_KEEP
+        try:
+            self.poster_update_policy = self.prefs['poster_update_policy']
+        except KeyError:
+            pass
+        self.poster_update_policy = normalize_poster_policy(
+            self.poster_update_policy)
+        self.current_artwork_size = 0
 
     def build_url(self):
         """
@@ -28,11 +202,32 @@ class UpdateTool:
         self.region_override = self.get_preferred_region()
         # Set the region helper
         region_helper = RegionTool(
-            region=self.region_override, content_type=self.content_type, id=self.extract_asin_from_id())
+            region=self.region_override,
+            content_type=self.content_type,
+            id=self.extract_asin_from_id(),
+            base_url=self.api_url)
 
         update_url = region_helper.get_id_url()
         log.debug('Update URL: ' + update_url)
         return update_url
+
+    def build_artwork_url(self):
+        """
+            Builds the retained-artwork URL for a book.
+        """
+        if self.content_type != 'books':
+            return None
+        base_url, _, query = self.build_url().partition('?')
+        return base_url + '/artwork?' + query
+
+    def build_similar_url(self):
+        """
+            Builds the expanded similar-books URL for a book.
+        """
+        if self.content_type != 'books':
+            return None
+        base_url, _, query = self.build_url().partition('?')
+        return base_url + '/similar?' + query + '&expand=books'
 
     def cleanup_html(self):
         """
@@ -220,12 +415,218 @@ class AlbumUpdateTool(UpdateTool):
             self.synopsis = response['summary']
         if 'image' in response:
             self.thumb = response['image']
+        if 'tags' in response:
+            self.tags = response['tags']
         if 'similar' in response:
             self.similar = response['similar']
         if 'subtitle' in response:
             self.subtitle = response['subtitle']
         if 'title' in response:
             self.title = response['title']
+
+    def parse_artwork_response(self, response):
+        """
+            Collects retained cover images, newest first.
+        """
+        self.artwork_ok = False
+        self.artwork_urls = []
+        self.artwork_fallbacks = {}
+        self.artwork_sizes = {}
+        self.current_artwork_size = 0
+        if not isinstance(response, dict):
+            return
+        items = response.get('items')
+        if not isinstance(items, list):
+            return
+        self.artwork_ok = True
+
+        current_image_id = self.get_amazon_image_id(self.thumb)
+        seen_urls = set()
+        seen_image_ids = set()
+        parsed_items = 0
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            legacy = item.get('legacy')
+            if not isinstance(legacy, dict):
+                legacy = {}
+            stored_url = legacy.get('storedUrl')
+            if not isinstance(stored_url, STRING_TYPES):
+                stored_url = None
+            renditions = item.get('renditions')
+            if not isinstance(renditions, list):
+                renditions = []
+            rendition_urls = self.pick_rendition_urls(renditions)
+            stored_ok = bool(stored_url and is_approved_artwork_url(
+                stored_url, self.api_url))
+            if not stored_ok and not rendition_urls:
+                continue
+            parsed_items += 1
+            fallback_url = None
+            if stored_ok:
+                url = stored_url
+                for candidate in rendition_urls:
+                    if candidate == self.thumb:
+                        continue
+                    if candidate in seen_urls:
+                        continue
+                    if (current_image_id and
+                            self.get_amazon_image_id(candidate) ==
+                            current_image_id):
+                        continue
+                    fallback_url = candidate
+                    break
+            else:
+                url = None
+                explicit_image_id = item.get('imageId')
+                if (not isinstance(explicit_image_id, STRING_TYPES) or
+                        not explicit_image_id):
+                    explicit_image_id = None
+                for candidate in rendition_urls:
+                    if candidate == self.thumb:
+                        continue
+                    if candidate in seen_urls:
+                        continue
+                    if (current_image_id and
+                            self.get_amazon_image_id(candidate) ==
+                            current_image_id):
+                        continue
+                    url = candidate
+                    break
+                if not url and explicit_image_id and current_image_id:
+                    for candidate in rendition_urls:
+                        if candidate == self.thumb:
+                            continue
+                        if candidate in seen_urls:
+                            continue
+                        if (self.get_amazon_image_id(candidate) ==
+                                current_image_id and
+                                explicit_image_id != current_image_id):
+                            url = candidate
+                            break
+                if not url:
+                    continue
+            if url in seen_urls or url == self.thumb:
+                continue
+            item_image_id = item.get('imageId')
+            if (not isinstance(item_image_id, STRING_TYPES) or
+                    not item_image_id):
+                item_image_id = self.get_amazon_image_id(url)
+            url_image_id = self.get_amazon_image_id(url)
+            if (current_image_id and
+                    item_image_id == current_image_id and
+                    url_image_id == current_image_id):
+                current_size = 0
+                for rendition in renditions:
+                    if not isinstance(rendition, dict):
+                        continue
+                    try:
+                        candidate_size = int(
+                            rendition.get('rendition'))
+                    except (TypeError, ValueError):
+                        continue
+                    if candidate_size > current_size:
+                        current_size = candidate_size
+                if current_size > self.current_artwork_size:
+                    self.current_artwork_size = current_size
+                continue
+            if item_image_id and item_image_id in seen_image_ids:
+                continue
+            if (stored_ok and fallback_url and
+                    fallback_url != stored_url):
+                self.artwork_fallbacks[stored_url] = fallback_url
+            artwork_size = 0
+            for rendition in renditions:
+                if not isinstance(rendition, dict):
+                    continue
+                if rendition.get('sourceUrl') == url:
+                    try:
+                        artwork_size = int(rendition.get('rendition'))
+                    except (TypeError, ValueError):
+                        artwork_size = 0
+                    break
+            if not artwork_size and stored_ok:
+                stored_name = urlparse(url).path.rsplit('/', 1)[-1]
+                stored_rendition = re.search(r'_SL(\d+)', stored_name)
+                if stored_rendition:
+                    artwork_size = int(stored_rendition.group(1))
+            if item_image_id:
+                seen_image_ids.add(item_image_id)
+            seen_urls.add(url)
+            self.artwork_sizes[url] = artwork_size
+            self.artwork_urls.append(url)
+            if (self.poster_order == 'Most recent cover' and
+                    len(self.artwork_urls) >= MAX_HISTORY_POSTERS):
+                break
+        if items and not parsed_items:
+            self.artwork_ok = False
+            self.artwork_urls = []
+            self.artwork_fallbacks = {}
+
+    def pick_rendition_urls(self, renditions):
+        """
+            Returns approved rendition URLs in preference order.
+        """
+        approved = []
+        approved_set = set()
+        for preferred in ('1024', '500'):
+            for rendition in renditions:
+                if not isinstance(rendition, dict):
+                    continue
+                source = rendition.get('sourceUrl')
+                if (rendition.get('rendition') == preferred and
+                        isinstance(source, STRING_TYPES) and source and
+                        source not in approved_set and
+                        is_approved_artwork_url(source, self.api_url)):
+                    approved.append(source)
+                    approved_set.add(source)
+        for rendition in renditions:
+            if not isinstance(rendition, dict):
+                continue
+            source = rendition.get('sourceUrl')
+            if (isinstance(source, STRING_TYPES) and source and
+                    source not in approved_set and
+                    is_approved_artwork_url(source, self.api_url)):
+                approved.append(source)
+                approved_set.add(source)
+        return approved
+
+    def parse_similar_response(self, response):
+        """
+            Collects similar book titles from the dedicated endpoint.
+            Leaves inline recommendations in place when the response is
+            missing or malformed.
+        """
+        self.similar_ok = False
+        if not isinstance(response, dict):
+            return
+        books = response.get('books')
+        if not isinstance(books, list):
+            return
+        similar = []
+        for book in books[:MAX_SIMILAR_BOOKS]:
+            if not isinstance(book, dict):
+                continue
+            title = book.get('title')
+            if not isinstance(title, STRING_TYPES):
+                continue
+            title = title.strip()
+            if title:
+                similar.append({'name': title})
+        if books and not similar:
+            # A nonempty list with no usable titles is malformed; keep the
+            # inline fallback instead of replacing it with an empty list.
+            return
+        self.similar = similar
+        self.similar_ok = True
+
+    def get_amazon_image_id(self, url):
+        """
+            Extracts the stable Amazon image ID from a cover URL.
+        """
+        if not url or '/images/I/' not in url:
+            return None
+        return url.split('/images/I/', 1)[1].split('.', 1)[0].split('/', 1)[0]
 
     def set_metadata_date(self):
         """
@@ -239,13 +640,18 @@ class AlbumUpdateTool(UpdateTool):
         """
             Sets empty variables.
         """
+        self.artwork_fallbacks = {}
+        self.artwork_ok = False
+        self.artwork_urls = []
         self.date = None
         self.genres = None
         self.rating = None
         self.series = ''
         self.series2 = ''
         self.similar = None
+        self.similar_ok = False
         self.subtitle = ''
+        self.tags = None
         self.thumb = ''
         self.volume = ''
         self.volume2 = ''
@@ -299,9 +705,25 @@ class AlbumUpdateTool(UpdateTool):
         tagger = TagTool(self, self.prefs)
 
         # Clears moods if force (refresh) is true.
+        store_similar = store_similar_enabled(self.prefs)
         if self.force:
-            tagger.clear_moods()
+            tagger.clear_moods(
+                keep_similar=(store_similar and
+                              not self.similar_ok))
             tagger.clear_styles()
+        if not store_similar:
+            # Clear old recommendations before adding other moods so a
+            # normal tag named like one is not removed after it is added.
+            # Harmless on a forced refresh: clear_moods above already
+            # removed all moods when similar moods are disabled.
+            tagger.clear_similar_moods()
+            # PR #136 c#4723866927: drop the ownership record on a
+            # disabled refresh; similar_ok stays false here, so the
+            # record below would never be cleared and a later fallback
+            # refresh would treat a user-added mood as agent-owned.
+            # c#4723964049: runs for forced refreshes too; the force
+            # branch above would otherwise skip this cleanup.
+            clear_stored_similar(self)
 
         # Genres.
         tagger.add_genres()
@@ -312,8 +734,18 @@ class AlbumUpdateTool(UpdateTool):
             tagger.add_authors_to_moods()
         # Series.
         tagger.add_series_to_moods()
-        # Similar.
-        tagger.add_similar()
+        # Tags (topics, awards, editorial, moods).
+        if self.prefs['store_tags_as_moods']:
+            tagger.add_tags_to_moods()
+        # Similar books. Replace only when the dedicated response was
+        # valid; a failed fetch keeps the agent entries stored before.
+        # The clear removes only agent-owned entries via the stored
+        # record, so user-added Similar: moods survive the refresh.
+        if self.similar_ok:
+            clear_stored_similar(self)
+        if store_similar:
+            tagger.add_similar_moods(
+                replace=self.similar_ok)
 
     def set_metadata_title(self):
         """
@@ -366,6 +798,8 @@ class ArtistUpdateTool(UpdateTool):
             Crop each portrait photo to a square centered at the top,
             and crop each landscape photo to a square at the horizontal center
         """
+        if not image_url:
+            return ''
         try:
             image_file_dl = urllib.urlopen(image_url)
             image_file_dl_contents = image_file_dl.read()
@@ -418,14 +852,14 @@ class ArtistUpdateTool(UpdateTool):
 
             return image_url
 
-        except Exception as err:
+        except Exception:
             log.separator(
                 msg=(
                     'Error getting square image for ' + self.media.title
                 ),
                 log_level="error"
             )
-            log.error(err)
+            log.error('Failed to get square image')
         return image_url
 
     def parse_api_response(self, response):
@@ -497,6 +931,9 @@ class ArtistUpdateTool(UpdateTool):
         # Genres.
         tagger.add_genres()
         # Similar.
+        # The response was valid when compile_metadata runs, so reconcile
+        # agent-owned entries even when the new list is empty.
+        clear_stored_similar(self)
         tagger.add_similar()
 
     def set_metadata_title(self):
@@ -552,19 +989,153 @@ class TagTool:
         if self.helper.series2:
             self.helper.metadata.moods.add("Series: " + self.helper.series2)
 
+    def add_tags_to_moods(self):
+        """
+            Adds Audnexus tags to Plex moods.
+        """
+        tags = self.helper.tags
+        if not isinstance(tags, list):
+            return
+        prefixes = {
+            'editorial': 'Editorial: ',
+            'award': 'Award: ',
+            'franchise': 'Franchise: ',
+            'goodreads': 'Goodreads: ',
+            'social': 'Social: ',
+            'duration': 'Duration: ',
+            'instareads': 'Instareads: ',
+            'other': 'Tag: ',
+        }
+        for tag in tags:
+            try:
+                if isinstance(tag, dict):
+                    name_value = tag.get('name')
+                    tag_type = tag.get('type')
+                else:
+                    name_value = tag
+                    tag_type = None
+                if not isinstance(name_value, STRING_TYPES):
+                    continue
+                name = name_value.strip()
+                if not name:
+                    continue
+                if not isinstance(tag_type, STRING_TYPES):
+                    tag_type = None
+                prefix = prefixes.get(tag_type, '')
+                self.helper.metadata.moods.add(prefix + name)
+            except Exception:
+                continue
+
+    def add_similar_moods(self, replace=False):
+        """
+            Adds similar books as agent-owned Similar: moods. With
+            replace=True the agent-owned entries were already removed
+            by clear_stored_similar before this call, so the
+            replacement is just these additions; user-added Similar:
+            moods are left in place.
+        """
+        if not self.helper.similar:
+            return
+        pre_existing = []
+        for mood in list(self.helper.metadata.moods):
+            if (isinstance(mood, STRING_TYPES) and
+                    mood.startswith('Similar: ')):
+                pre_existing.append(mood[len('Similar: '):])
+        names = []
+        for item in self.helper.similar:
+            if isinstance(item, dict):
+                name = item.get('name')
+            else:
+                name = item
+            if not isinstance(name, STRING_TYPES):
+                continue
+            name = name.strip()
+            if name:
+                names.append(name)
+                self.helper.metadata.moods.add('Similar: ' + name)
+        if names:
+            # PR #136 c#4723577969: store only the entries this refresh
+            # inserted, so clear_stored_similar cannot remove
+            # pre-existing user entries.
+            stored = []
+            for name in names:
+                if name not in pre_existing:
+                    stored.append(name)
+            # PR #136 c#4723752651: a fallback refresh (replace False)
+            # skips the prior clear, so merge into the existing record
+            # instead of overwriting it to an empty list.
+            store_similar_titles(self.helper, stored, merge=not replace)
+
+    def clear_similar_moods(self):
+        """
+            Removes agent-owned Similar: moods.
+        """
+        keep = []
+        for mood in list(self.helper.metadata.moods):
+            if (isinstance(mood, STRING_TYPES) and
+                    mood.startswith('Similar: ')):
+                continue
+            keep.append(mood)
+        self.helper.metadata.moods.clear()
+        for mood in keep:
+            self.helper.metadata.moods.add(mood)
+
     def add_similar(self):
         """
-            Adds similar items.
+            Adds similar items, falling back to moods for album metadata.
         """
-        if self.helper.similar:
-            for item in self.helper.similar:
-                self.helper.metadata.similar.add(item['name'])
+        if not self.helper.similar:
+            return
+        names = []
+        for item in self.helper.similar:
+            if isinstance(item, dict):
+                name = item.get('name')
+            else:
+                name = item
+            if isinstance(name, STRING_TYPES):
+                name = name.strip()
+                if name:
+                    names.append(name)
+        if not names:
+            return
+        pre_existing = []
+        try:
+            pre_existing = list(self.helper.metadata.similar)
+        except AttributeError:
+            for mood in list(self.helper.metadata.moods):
+                if (isinstance(mood, STRING_TYPES) and
+                        mood.startswith('Similar: ')):
+                    pre_existing.append(mood[len('Similar: '):])
+        try:
+            for name in names:
+                self.helper.metadata.similar.add(name)
+        except AttributeError:
+            for name in names:
+                self.helper.metadata.moods.add('Similar: ' + name)
+        # PR #136 c#4723577969: store only the entries this refresh
+        # inserted, so clear_stored_similar cannot remove pre-existing
+        # user entries.
+        stored = []
+        for name in names:
+            if name not in pre_existing:
+                stored.append(name)
+        store_similar_titles(self.helper, stored)
 
-    def clear_moods(self):
+    def clear_moods(self, keep_similar=False):
         """
-            Clears moods.
+            Clears moods, optionally keeping agent-owned Similar: moods.
         """
+        if not keep_similar:
+            self.helper.metadata.moods.clear()
+            return
+        similar = []
+        for mood in list(self.helper.metadata.moods):
+            if (isinstance(mood, STRING_TYPES) and
+                    mood.startswith('Similar: ')):
+                similar.append(mood)
         self.helper.metadata.moods.clear()
+        for mood in similar:
+            self.helper.metadata.moods.add(mood)
 
     def clear_styles(self):
         """

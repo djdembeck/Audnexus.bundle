@@ -7,6 +7,12 @@
         "default": "us"
     },
     {
+        "id": "api_url",
+        "label": "Audnexus API base URL (self-hosted or newer deployment)",
+        "type": "text",
+        "default": "https://api.audnex.us"
+    },
+    {
         "id": "keep_existing_genres",
         "label": "Keep existing genres in place",
         "type": "bool",
@@ -17,6 +23,39 @@
         "label": "Append authors as Mood tags",
         "type": "bool",
         "default": "true"
+    },
+    {
+        "id": "store_tags_as_moods",
+        "label": "Append Audnexus tags (topics, awards, moods) as Plex Mood tags",
+        "type": "bool",
+        "default": "false"
+    },
+    {
+        "id": "store_similar_as_moods",
+        "label": "Append similar books as Similar: Mood tags",
+        "type": "bool",
+        "default": "false"
+    },
+    {
+        "id": "poster_order",
+        "label": "Default cover art: ",
+        "type": "enum",
+        "values": [
+            "Most recent cover",
+            "Oldest historical cover",
+            "Largest resolution cover"
+        ],
+        "default": "Most recent cover"
+    },
+    {
+        "id": "poster_update_policy",
+        "label": "Poster updates: ",
+        "type": "enum",
+        "values": [
+            "Always refresh covers from upstream",
+            "Keep saved posters"
+        ],
+        "default": "Keep saved posters"
     },
     {
         "id": "sort_author_by_last_name",

@@ -82,6 +82,12 @@ git pull
 
 If you wish to use local tags/images, you can follow the directions [here](https://github.com/seanap/Plex-Audiobook-Guide#configure-metadata-agent-in-plex), but this agent assumes you will not.
 
+### Using a self-hosted or newer API
+
+Historical artwork, tags, and similar books require an Audnexus deployment running the current server with history enabled. The default public API, `https://api.audnex.us`, may still return the older payload (empty history, tags, and similar books).
+
+To use a self-hosted instance, set **Audnexus API base URL** in the agent settings to that instance, for example `https://audnexus.example.com`. A trailing slash is ignored.
+
 ### Using quick match
 
 There are currently 2 quick match/search override options:
@@ -159,6 +165,8 @@ There are a few tricks to know about using fix match for books and authors:
 
 #### Books (Albums)
 - High resolution cover (up to 3200x3200).
+- Default cover art: most recent, oldest historical, or largest-resolution cover.
+- Retained historical covers, when Audnexus has them, as additional choices in Plex's artwork picker.
 - Rating (currently based on Audible user rating).
 - Release date.
 - Record label (publisher)
@@ -169,6 +177,8 @@ There are a few tricks to know about using fix match for books and authors:
 - Narrator as `Style` tag.
 - Authors as `Mood` tag.
 - Series as `Mood` tag (prefixed by `Series:`)
+- Audnexus tags as `Mood` tags, prefixed by type where useful (`Editorial:`, `Award:`, etc.). Disabled by default; enable with the `store_tags_as_moods` preference.
+- Similar books from Audnexus's similar endpoint, stored as `Similar:` Mood tags. Disabled by default; enable with the `store_similar_as_moods` preference.
 - Sorted by Series number and then book title.
 
 **This agent cannot create collections for your series'. 
